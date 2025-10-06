@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS challenges (
     infoId INT NOT NULL,
     flag VARCHAR(100) NOT NULL,
     reward INT NOT NULL,
+    hint VARCHAR(255),
     FOREIGN KEY (infoId) REFERENCES infos(id)
 
 );
