@@ -1,6 +1,7 @@
 services:
   mariadb:
     image: mariadb:latest
+    container_name: mariadb_workshop
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: escape_game
@@ -23,25 +24,63 @@ services:
       - mariadb
 
   backend:
-    build: ./Backend
+    image: node:23-alpine3.19
+    volumes:
+      - ./Backend:/app
     command: >
-      /bin/sh -c "npm i; npm run dev"
+      /bin/sh -c "cd app; npm i; npm run dev"
     environment:
       DB_HOST: mariadb
       DB_USER: escape_user
       DB_PASSWORD: escape_pass
       DB_NAME: escape_game
+      DATABASE_URL: "mysql://escape_user:escape_pass@mariadb:3306/escape_game"
     depends_on:
       - mariadb
     ports:
-      - "3001:3000"
-
-  frontend:
-    build: ./frontend
-    command: >
-      /bin/sh -c "npm i; npm run dev"
-    ports:
       - "3000:3000"
 
+  frontend:
+    image: node:23-alpine3.19
+    volumes:
+      - ./frontend:/app
+    command: >
+      /bin/sh -c "cd app; npm i; npm run dev --host"
+    ports:
+      - "5173:5173"
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on:
+      - mariadb
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    depends_on:
+      - grafana
+  
+  mysqld-exporter:
+    image: prom/mysqld-exporter
+    container_name: mysqld-exporter
+    environment:
+      - DATA_SOURCE_NAME=exporter:exporterpassword@(mariadb_workshop:3306)/
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mariadb
+
+      
 volumes:
   mariadb_data:
+  grafana_data:
