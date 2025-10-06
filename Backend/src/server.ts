@@ -1,15 +1,11 @@
 import express from 'express';
+import routes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json());
-
-// Example route
-app.get('/', (req, res) => {
-    res.send('Hello, this is the escape game API');
-});
+app.use(routes);
 
 // Start server
 app.listen(PORT, () => {
