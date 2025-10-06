@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int    @id @default(autoincrement())
+  name        String
+  hashedEmail String
+
+  // relations
+  adminParties Party[] // parties where this user is admin
+  groupUsers   GroupUser[] // membership links
+  messagesSent Message[] // messages sent by this user
+}
+
+model Party {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String
+  endDate     DateTime
+  adminUserId Int
+
+  // relations
+  adminUser User    @relation(fields: [adminUserId], references: [id])
+  groups    Group[]
+}
+
+model Message {
+  id       Int      @id @default(autoincrement())
+  groupId  Int
+  senderId Int
+  sendDate DateTime @default(now())
+  content  String
+
+  // relations
+  group  Group @relation(fields: [groupId], references: [id])
+  sender User  @relation(fields: [senderId], references: [id])
+}
+
+model Info {
+  id          Int    @id @default(autoincrement())
+  title       String
+  description String
+
+  // relations
+  illustrations Illustration[]
+  challenges    Challenge[]
+}
+
+model Illustration {
+  id     Int    @id @default(autoincrement())
+  infoId Int
+  url    String
+
+  // relations
+  info Info @relation(fields: [infoId], references: [id])
+}
+
+model GroupUser {
+  id      Int @id @default(autoincrement())
+  groupId Int
+  userId  Int
+
+  // relations
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+model Group {
+  id      Int    @id @default(autoincrement())
+  partyId Int
+  name    String
+  code    String
+  score   Int    @default(0)
+
+  // relations
+  party               Party               @relation(fields: [partyId], references: [id])
+  groupUsers          GroupUser[]
+  messages            Message[]
+  challengeProgresses ChallengeProgress[]
+}
+
+model Challenge {
+  id     Int    @id @default(autoincrement())
+  infoId Int
+  flag   String
+  reward String
+  hint   String
+  points Int
+
+  // relations
+  info       Info                @relation(fields: [infoId], references: [id])
+  progresses ChallengeProgress[]
+}
+
+model ChallengeProgress {
+  id                Int     @id @default(autoincrement())
+  groupId           Int
+  challengeId       Int
+  haveBeenCompleted Boolean @default(false)
+
+  // relations
+  group     Group     @relation(fields: [groupId], references: [id])
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+}

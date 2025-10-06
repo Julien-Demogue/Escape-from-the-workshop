@@ -1,5 +1,1 @@
-import { IUser } from '../models/user.model';
-
-export class UserService {
-
-}
+// import { PrismaClient, User } from "@prisma/client";
