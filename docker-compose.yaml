@@ -10,9 +10,22 @@ services:
       - "3306:3306"
     volumes:
       - ./init_db_script:/docker-entrypoint-initdb.d/
+    
+  phpmyadmin:
+    image: phpmyadmin:5.2.2
+    ports:
+      - 8095:80
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306 
+      UPLOAD_LIMIT: '512M'
+    depends_on:
+      - mariadb
 
   backend:
-    build: ./backend
+    build: ./Backend
+    command: >
+      /bin/sh -c "npm i; npm run dev"
     environment:
       DB_HOST: mariadb
       DB_USER: escape_user
@@ -21,10 +34,12 @@ services:
     depends_on:
       - mariadb
     ports:
-      - "4000:4000"
+      - "3001:3000"
 
   frontend:
     build: ./frontend
+    command: >
+      /bin/sh -c "npm i; npm run dev"
     ports:
       - "3000:3000"
 
