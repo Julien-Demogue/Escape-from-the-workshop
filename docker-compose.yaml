@@ -1,0 +1,32 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: escape_game
+      MYSQL_USER: escape_user
+      MYSQL_PASSWORD: escape_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init_db_script:/docker-entrypoint-initdb.d/
+
+  backend:
+    build: ./backend
+    environment:
+      DB_HOST: mariadb
+      DB_USER: escape_user
+      DB_PASSWORD: escape_pass
+      DB_NAME: escape_game
+    depends_on:
+      - mariadb
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+
+volumes:
+  mariadb_data:
