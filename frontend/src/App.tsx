@@ -1,10 +1,13 @@
-function App() {
+import { Routes, Route } from "react-router-dom";
 
-  return (
-      <h1 className="text-3xl font-bold underline">
-        WORKSHOP - Escape from the workshop
-      </h1>
-  )
-}
+import Home from "./pages/Home";
+import About from "./pages/About";
 
-export default App
+const App: React.FC = () => (
+  <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/about" element={<About />} />
+  </Routes>
+);
+
+export default App;
