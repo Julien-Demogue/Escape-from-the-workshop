@@ -49,7 +49,7 @@ CREATE TABLE if not EXISTS groupes (
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
     score INT DEFAULT 0,
-    FOREIGN KEY (partyId) REFERENCES party(id)
+    FOREIGN KEY (partyId) REFERENCES parties(id)
 );
 
 CREATE TABLE if not EXISTS groupe_user (
