@@ -87,6 +87,7 @@ router.post('/login', async (req: Request, res: Response) => {
  *             required:
  *               - hashedEmail
  *               - username
+ *               - color
  *             properties:
  *               hashedEmail:
  *                 type: string
@@ -94,6 +95,9 @@ router.post('/login', async (req: Request, res: Response) => {
  *               username:
  *                 type: string
  *                 example: "player1"
+ *               color:
+ *                 type: string
+ *                 example: "#ffffff"
  *     responses:
  *       201:
  *         description: User created
@@ -108,6 +112,8 @@ router.post('/login', async (req: Request, res: Response) => {
  *                   type: string
  *                 hashedEmail:
  *                   type: string
+ *                 color:
+ *                   type: string
  *       400:
  *         description: Bad request (missing hashedEmail or username)
  *       500:
@@ -115,12 +121,12 @@ router.post('/login', async (req: Request, res: Response) => {
  */
 router.post('/register', (req: Request, res: Response) => {
     try {
-        const { hashedEmail, username } = req.body;
-        if (!hashedEmail || !username) {
-            return res.status(400).json({ error: 'Hashed email and username are required' });
+        const { hashedEmail, username, color } = req.body;
+        if (!hashedEmail || !username || !color) {
+            return res.status(400).json({ error: 'Invalid parameters' });
         }
 
-        const newUser = userService.createUser(hashedEmail, username);
+        const newUser = userService.createUser(hashedEmail, username, color);
         return res.status(201).json(newUser);
     }
     catch (error) {

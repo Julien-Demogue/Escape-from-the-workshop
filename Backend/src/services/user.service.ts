@@ -15,9 +15,9 @@ export class UserService {
         return this.prisma.user.findFirst({ where: { hashedEmail } });
     }
 
-    async createUser(hashedEmail: string, username: string): Promise<User> {
+    async createUser(hashedEmail: string, username: string, color: string): Promise<User> {
         return this.prisma.user.create({
-            data: { hashedEmail, username }
+            data: { hashedEmail, username, color }
         });
     }
 }
