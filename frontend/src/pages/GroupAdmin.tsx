@@ -5,6 +5,7 @@ import ThickBorderButton from "../components/ui/ThickBorderButton";
 import ThickBorderInput from "../components/ui/ThickBorderInput";
 import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
 import ThickBorderCircle from "../components/ui/ThickBorderCircle";
+import ThickBorderError from "../components/ui/ThickBorderError";
 
 interface Participant {
   id: number;
@@ -30,9 +31,29 @@ const GroupAdmin: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [movingParticipant, setMovingParticipant] = useState<MovingParticipant | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleMoveParticipant = (toGroupId: number) => {
     if (!movingParticipant) return;
+
+    // Vérifier si le groupe de destination est plein
+    const targetGroup = groups.find(g => g.id === toGroupId);
+    if (targetGroup && (targetGroup.members?.length || 0) >= 3) {
+      setErrorMessage("Ce groupe est complet. Vous devez remplacer un joueur existant.");
+      return;
+    }
+
+    // Vérifier si le joueur existe déjà dans un autre groupe
+    const isPlayerDuplicate = groups.some(group => 
+      group.id !== movingParticipant.fromGroupId && 
+      group.id !== toGroupId && 
+      group.members?.some(m => m.id === movingParticipant.participant.id)
+    );
+
+    if (isPlayerDuplicate) {
+      setErrorMessage("Ce joueur existe déjà dans un autre groupe");
+      return;
+    }
 
     setGroups(currentGroups => {
       return currentGroups.map(group => {
@@ -56,6 +77,7 @@ const GroupAdmin: React.FC = () => {
       });
     });
     setMovingParticipant(null);
+    setErrorMessage(null);
   };
 
   const handleNumberOfGroups = (value: string) => {
@@ -93,6 +115,14 @@ const GroupAdmin: React.FC = () => {
       <div className="flex flex-col items-center justify-center h-full gap-8 max-w-md mx-auto">
         <p className="text-sm text-gray-500">Maximum de 45 participants</p>
         
+        {errorMessage && (
+          <ThickBorderError
+            message={errorMessage}
+            onClose={() => setErrorMessage(null)}
+            className="w-full animate-fadeIn"
+          />
+        )}
+        
         <div className="w-full space-y-6">
           <div className="flex flex-col gap-2">
             <label>Nombre de groupes</label>
@@ -127,19 +157,43 @@ const GroupAdmin: React.FC = () => {
             onClick={() => {
               const numGroups = parseInt(numberOfGroups);
               const numParticipants = parseInt(participantsPerGroup);
-              if (numGroups && numParticipants) {
-                const newGroups = Array.from({ length: numGroups }, (_, i) => ({
-                  id: i + 1,
-                  participants: numParticipants,
-                  name: `Groupe ${i + 1}`,
-                  members: Array.from({ length: numParticipants }, (_, j) => ({
-                    id: j + 1,
-                    name: `Joueur ${j + 1}`
-                  }))
-                }));
-                setGroups(newGroups);
-                setSelectedGroupId(null);
+              
+              if (!numGroups || !numParticipants) {
+                setErrorMessage("Veuillez remplir tous les champs");
+                return;
               }
+
+              const totalParticipants = numGroups * numParticipants;
+              if (totalParticipants > 45) {
+                setErrorMessage("Le nombre total de participants ne peut pas dépasser 45");
+                return;
+              }
+
+              // Créer un tableau de tous les joueurs avec des IDs uniques
+              const allParticipants = Array.from(
+                { length: totalParticipants },
+                (_, i) => ({
+                  id: i + 1,
+                  name: `Joueur ${i + 1}`
+                })
+              );
+
+              // Répartir les joueurs dans les groupes
+              const newGroups = Array.from({ length: numGroups }, (_, groupIndex) => {
+                const startIndex = groupIndex * numParticipants;
+                const groupMembers = allParticipants.slice(startIndex, startIndex + numParticipants);
+                
+                return {
+                  id: groupIndex + 1,
+                  participants: numParticipants,
+                  name: `Groupe ${groupIndex + 1}`,
+                  members: groupMembers
+                };
+              });
+
+              setGroups(newGroups);
+              setSelectedGroupId(null);
+              setErrorMessage(null);
             }}
           >
             Créer aléatoirement les groupes
@@ -150,24 +204,28 @@ const GroupAdmin: React.FC = () => {
         {groups.length > 0 && (
           <div className="w-full mt-8">
             {/* Grille des groupes */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
               {groups.map((group) => (
                 <div 
                   key={group.id} 
-                  className={`border-2 border-black rounded-lg p-4 flex flex-wrap gap-2 items-center justify-center cursor-pointer transition-colors ${
+                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 cursor-pointer transition-colors ${
                     selectedGroupId === group.id ? 'bg-gray-100' : ''
                   }`}
-                  style={{ minHeight: '80px' }}
                   onClick={() => setSelectedGroupId(group.id)}
                 >
-                  {group.members?.map((member, i) => (
-                    <ThickBorderCircle 
-                      key={i} 
-                      size={24}
-                      style={{ backgroundColor: 'white' }}
-                      title={member.name}
-                    />
-                  ))}
+                  <div className="text-lg font-semibold text-center">
+                    {group.name}
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center justify-center min-h-[60px]">
+                    {group.members?.map((member) => (
+                      <ThickBorderCircle 
+                        key={member.id}
+                        size={28}
+                        style={{ backgroundColor: 'white' }}
+                        title={member.name}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
