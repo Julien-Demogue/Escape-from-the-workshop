@@ -19,6 +19,9 @@ const Home = () => {
       <Link to="/heraldry-quiz" className="red">
         Accéder au quiz héraldique
       </Link>
+      <Link to="/chambord-enigma" className="red">
+        Accéder à l'énigme de Chambord
+      </Link>
     </div>
   )
 }
