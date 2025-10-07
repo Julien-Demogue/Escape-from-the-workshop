@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS challenges (
 
 CREATE TABLE if not exists illustrations (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    infosId INT NOT NULL,
+    infoId INT NOT NULL,
     url VARCHAR(255) NOT NULL,
-    FOREIGN KEY (infosId) REFERENCES infos(id)
+    FOREIGN KEY (infoId) REFERENCES infos(id)
 
 );
 
