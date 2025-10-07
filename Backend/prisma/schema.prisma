@@ -88,7 +88,7 @@ model GroupUser {
   group Group @relation(fields: [groupId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
 
-  @@map("group_user")
+  @@map("groupe_user")
 }
 
 model Group {
@@ -104,7 +104,7 @@ model Group {
   messages            Message[]
   challengeProgresses ChallengeProgress[]
 
-  @@map("groups")
+  @@map("groupes")
 }
 
 model Challenge {

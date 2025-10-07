@@ -8,6 +8,10 @@ export class PartyService {
         this.prisma = new PrismaClient();
     }
 
+    async getById(id: number): Promise<Party | null> {
+        return this.prisma.party.findUnique({ where: { id } });
+    }
+
     async getByCode(code: string): Promise<Party | null> {
         return this.prisma.party.findFirst({ where: { code } });
     }

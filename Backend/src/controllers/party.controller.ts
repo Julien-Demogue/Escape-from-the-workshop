@@ -11,11 +11,13 @@ export class PartyController {
     async getByCode(req: Request, res: Response): Promise<void> {
         try {
             const code = req.params.code;
+
             const party = await this.partyService.getByCode(code);
             if (!party) {
                 res.status(404).json({ error: 'Party not found' });
                 return;
             }
+
             res.status(200).json(party);
         } catch (error) {
             console.error(error);
@@ -26,6 +28,7 @@ export class PartyController {
     async createParty(req: Request, res: Response): Promise<void> {
         try {
             const adminUserId = (req as any).user?.id;
+
             if (!adminUserId) {
                 res.status(401).json({ error: 'Unauthorized' });
                 return;
@@ -49,6 +52,12 @@ export class PartyController {
                 return;
             }
 
+            let party = await this.partyService.getById(partyId);
+            if (!party) {
+                res.status(404).json({ error: 'Party not found' });
+                return;
+            }
+
             if (!endTime) {
                 res.status(400).json({ error: 'endTime is required' });
                 return;
@@ -60,7 +69,7 @@ export class PartyController {
                 return;
             }
 
-            const party = await this.partyService.startParty(partyId, parsedDate);
+            party = await this.partyService.startParty(partyId, parsedDate);
             res.status(200).json(party);
         } catch (error) {
             console.error(error);
