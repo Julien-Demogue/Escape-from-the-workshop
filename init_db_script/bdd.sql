@@ -36,14 +36,14 @@ CREATE TABLE if not exists illustrations (
 
 );
 
-CREATE table if not EXISTS party (
+CREATE table if not EXISTS parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     adminUserId INT NOT NULL,
     endTime TIMESTAMP NULL,
     FOREIGN KEY (adminUserId) REFERENCES users(id)
 );
 
-CREATE TABLE if not EXISTS groupe (
+CREATE TABLE if not EXISTS groupes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     partyId INT NOT NULL,
     name VARCHAR(100) NOT NULL,
