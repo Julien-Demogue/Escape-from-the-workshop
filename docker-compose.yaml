@@ -35,6 +35,7 @@ services:
       DB_PASSWORD: escape_pass
       DB_NAME: escape_game
       DATABASE_URL: "mysql://escape_user:escape_pass@mariadb:3306/escape_game"
+      JWT_SECRET: "steve_le_poisson"
     depends_on:
       - mariadb
     ports:
@@ -71,10 +72,10 @@ services:
       - grafana
   
   mysqld-exporter:
-    image: prom/mysqld-exporter
+    image: prom/mysqld-exporter:v0.14.0
     container_name: mysqld-exporter
     environment:
-      - DATA_SOURCE_NAME=exporter:exporterpassword@(mariadb:3306)/
+      - "DATA_SOURCE_NAME=exporter:exporterpassword@tcp(mariadb:3306)/"
     ports:
       - "9104:9104"
     depends_on:
