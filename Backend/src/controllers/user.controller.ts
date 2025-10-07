@@ -8,15 +8,6 @@ export class UserController {
         this.userService = new UserService();
     }
 
-    async getAllUsers(req: Request, res: Response): Promise<void> {
-        try {
-            const users = await this.userService.getAll();
-            res.status(200).json(users);
-        } catch (error) {
-            res.status(500).json({ error: 'Internal Server Error ' + error });
-        }
-    }
-
     async getUserById(req: Request, res: Response): Promise<void> {
         const id = parseInt(req.params.id, 10);
         try {

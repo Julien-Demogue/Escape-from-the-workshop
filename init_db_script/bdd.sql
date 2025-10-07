@@ -8,7 +8,8 @@ FLUSH PRIVILEGES;
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
-    hashedEmail VARCHAR(256) NOT NULL UNIQUE
+    hashedEmail VARCHAR(256) NOT NULL UNIQUE,
+    color VARCHAR(12) NOT NULL
 
 );
 CREATE TABLE IF NOT EXISTS infos (
@@ -40,6 +41,7 @@ CREATE TABLE if not exists illustrations (
 CREATE table if not EXISTS parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     adminUserId INT NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
     endTime TIMESTAMP NULL,
     FOREIGN KEY (adminUserId) REFERENCES users(id)
 );

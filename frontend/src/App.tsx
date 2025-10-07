@@ -1,6 +1,11 @@
 import { Routes, Route } from "react-router-dom";
+
 import Home from "./pages/Home";
 import About from "./pages/About";
+import GroupAdmin from "./pages/GroupAdmin";
+import Group from "./pages/Group";
+import Dashboard from "./pages/Dashboard";
+import HeraldryQuiz from "./pages/HeraldryQuiz";
 import Puzzle from "./pages/Puzzle";
 
 const App: React.FC = () => (
@@ -8,6 +13,11 @@ const App: React.FC = () => (
     <Route path="/" element={<Home />} />
     <Route path="/about" element={<About />} />
     <Route path="/puzzle" element={<Puzzle />} />
+    <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
+    <Route path="/groupadmin" element={<GroupAdmin />} />
+    <Route path="/group" element={<Group />} />
+    <Route path="/dashboard" element={<Dashboard />} />
+
   </Routes>
 );
 
