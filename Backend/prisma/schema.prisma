@@ -58,12 +58,13 @@ model Message {
 
 model Info {
   id          Int    @id @default(autoincrement())
+  challengeId Int
   title       String
   description String
 
   // relations
   illustrations Illustration[]
-  challenges    Challenge[]
+  challenge     Challenge      @relation(fields: [challengeId], references: [id])
 
   @@map("infos")
 }
@@ -109,15 +110,14 @@ model Group {
 
 model Challenge {
   id     Int    @id @default(autoincrement())
-  infoId Int
   flag   String
   reward String
   hint   String
   points Int
 
   // relations
-  info       Info                @relation(fields: [infoId], references: [id])
   progresses ChallengeProgress[]
+  Info       Info[]
 
   @@map("challenges")
 }

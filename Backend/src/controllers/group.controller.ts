@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { GroupService } from '../services/group.service';
 import { PartyService } from '../services/party.service';
-import { Group } from '~/generated/prisma';
 
 export class GroupController {
     private groupService: GroupService;
