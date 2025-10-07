@@ -19,6 +19,7 @@ model User {
   id          Int    @id @default(autoincrement())
   username    String
   hashedEmail String
+  color       String
 
   // relations
   adminParties Party[] // parties where this user is admin
@@ -29,11 +30,10 @@ model User {
 }
 
 model Party {
-  id          Int      @id @default(autoincrement())
-  name        String
+  id          Int       @id @default(autoincrement())
   code        String
-  endDate     DateTime
   adminUserId Int
+  endTime     DateTime?
 
   // relations
   adminUser User    @relation(fields: [adminUserId], references: [id])
