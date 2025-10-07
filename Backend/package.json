@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon --watch src -e js,ts,json --exec \"ts-node src/server.ts\"",
     "build": "tsup src/server.ts --format cjs --clean",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prisma": "npx prisma generate"
   },
   "keywords": [],
   "author": "",

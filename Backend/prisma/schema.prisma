@@ -5,8 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -16,13 +17,15 @@ datasource db {
 
 model User {
   id          Int    @id @default(autoincrement())
-  name        String
+  username    String
   hashedEmail String
 
   // relations
   adminParties Party[] // parties where this user is admin
   groupUsers   GroupUser[] // membership links
   messagesSent Message[] // messages sent by this user
+
+  @@map("users")
 }
 
 model Party {
@@ -35,6 +38,8 @@ model Party {
   // relations
   adminUser User    @relation(fields: [adminUserId], references: [id])
   groups    Group[]
+
+  @@map("parties")
 }
 
 model Message {
@@ -47,6 +52,8 @@ model Message {
   // relations
   group  Group @relation(fields: [groupId], references: [id])
   sender User  @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
 }
 
 model Info {
@@ -57,6 +64,8 @@ model Info {
   // relations
   illustrations Illustration[]
   challenges    Challenge[]
+
+  @@map("infos")
 }
 
 model Illustration {
@@ -66,6 +75,8 @@ model Illustration {
 
   // relations
   info Info @relation(fields: [infoId], references: [id])
+
+  @@map("illustrations")
 }
 
 model GroupUser {
@@ -76,6 +87,8 @@ model GroupUser {
   // relations
   group Group @relation(fields: [groupId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
+
+  @@map("group_user")
 }
 
 model Group {
@@ -90,6 +103,8 @@ model Group {
   groupUsers          GroupUser[]
   messages            Message[]
   challengeProgresses ChallengeProgress[]
+
+  @@map("groups")
 }
 
 model Challenge {
@@ -103,6 +118,8 @@ model Challenge {
   // relations
   info       Info                @relation(fields: [infoId], references: [id])
   progresses ChallengeProgress[]
+
+  @@map("challenges")
 }
 
 model ChallengeProgress {
@@ -114,4 +131,6 @@ model ChallengeProgress {
   // relations
   group     Group     @relation(fields: [groupId], references: [id])
   challenge Challenge @relation(fields: [challengeId], references: [id])
+
+  @@map("challenge_progress")
 }
