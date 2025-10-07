@@ -123,10 +123,10 @@ model Challenge {
 }
 
 model ChallengeProgress {
-  id                Int     @id @default(autoincrement())
-  groupId           Int
-  challengeId       Int
-  haveBeenCompleted Boolean @default(false)
+  id          Int     @id @default(autoincrement())
+  groupId     Int
+  challengeId Int
+  isCompleted Boolean @default(false)
 
   // relations
   group     Group     @relation(fields: [groupId], references: [id])
