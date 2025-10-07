@@ -41,6 +41,7 @@ CREATE TABLE if not exists illustrations (
 CREATE table if not EXISTS parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     adminUserId INT NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
     endTime TIMESTAMP NULL,
     FOREIGN KEY (adminUserId) REFERENCES users(id)
 );
