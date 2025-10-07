@@ -45,7 +45,7 @@ services:
     volumes:
       - ./frontend:/app
     command: >
-      /bin/sh -c "cd app; npm i;npx prisma generate; npm run dev --host"
+      /bin/sh -c "cd app; npm i; npm run dev --host"
     ports:
       - "5173:5173"
   grafana:
@@ -74,7 +74,7 @@ services:
     image: prom/mysqld-exporter
     container_name: mysqld-exporter
     environment:
-      - DATA_SOURCE_NAME=exporter:exporterpassword@(localhost:3306)/
+      - DATA_SOURCE_NAME=exporter:exporterpassword@(mariadb:3306)/
     ports:
       - "9104:9104"
     depends_on:
