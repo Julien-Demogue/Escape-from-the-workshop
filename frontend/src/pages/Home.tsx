@@ -30,6 +30,9 @@ const Home = () => {
       <Link to="/memory-loire" className="red">
         Accéder au memory de la Loire
       </Link>
+      <Link to="/courier-loire" className="red">
+        Accéder au jeu du courrier de la Loire
+      </Link>
     </div>
   )
 }
