@@ -56,7 +56,7 @@ CREATE TABLE if not EXISTS groupe_user (
     id INT AUTO_INCREMENT PRIMARY KEY,
     groupId INT NOT NULL,
     userId INT NOT NULL,
-    FOREIGN KEY (groupId) REFERENCES groupe(id),
+    FOREIGN KEY (groupId) REFERENCES groupes(id),
     FOREIGN KEY (userId) REFERENCES users(id)
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE if not EXISTS messages (
     senderId INT NOT NULL,
     content TEXT NOT NULL,
     sendDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (groupId) REFERENCES groupe(id),
+    FOREIGN KEY (groupId) REFERENCES groupes(id),
     FOREIGN KEY (senderId) REFERENCES users(id)
 );
 
@@ -75,6 +75,6 @@ CREATE TABLE if NOT EXISTS challenge_progress (
     groupId INT NOT NULL,
     challengeId INT NOT NULL,
     isCompleted BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (groupId) REFERENCES groupe(id),
+    FOREIGN KEY (groupId) REFERENCES groupes(id),
     FOREIGN KEY (challengeId) REFERENCES challenges(id)
 );
