@@ -27,6 +27,9 @@ const Home = () => {
       <Link to="/brissac-enigma" className="red">
         Accéder à l'énigme de Brissac
       </Link>
+      <Link to="/memory-loire" className="red">
+        Accéder au memory de la Loire
+      </Link>
     </div>
   )
 }
