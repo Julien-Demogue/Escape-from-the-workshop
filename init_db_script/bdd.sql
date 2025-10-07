@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS challenges (
     id INT AUTO_INCREMENT PRIMARY KEY,
     flag VARCHAR(100) NOT NULL,
-    reward INT NOT NULL,
+    reward VARCHAR(100) NOT NULL,
     hint VARCHAR(255),
     points INT NOT NULL
 );
