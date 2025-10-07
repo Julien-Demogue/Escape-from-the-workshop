@@ -4,7 +4,7 @@ import { useState } from "react";
 // If you prefer an image for the alphabet, add it and use the <img /> in Hint 3:
 // import caesarAlphabetImg from "../assets/images/caesar/caesar-alphabet.png";
 
-const CIPHERTEXT = "NKWU FODDY";
+const CIPHERTEXT = "NKWO FUBDU";
 const VALID_ANSWERS = ["DAME VERTE"]; // add variants if you like (e.g., "LA DAME VERTE")
 
 // --- helpers ---
