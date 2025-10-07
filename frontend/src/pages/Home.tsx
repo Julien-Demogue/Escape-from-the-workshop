@@ -13,6 +13,9 @@ const Home = () => {
         placeholder="Code de la partie"
         className="border border-black"
       />
+      <Link to="/puzzle" className="red">
+        Accéder au puzzle
+      </Link>
     </div>
   )
 }
