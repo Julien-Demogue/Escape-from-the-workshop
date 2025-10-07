@@ -48,6 +48,13 @@ export class GroupService {
         });
     }
 
+    async addPoints(groupId: number, points: number): Promise<Group> {
+        return this.prisma.group.update({
+            where: { id: groupId },
+            data: { score: { increment: points } },
+        });
+    }
+
     async deleteGroup(groupId: number): Promise<Group> {
         return this.prisma.group.delete({
             where: { id: groupId },

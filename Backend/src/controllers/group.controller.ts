@@ -141,6 +141,31 @@ export class GroupController {
         }
     }
 
+    async addPoints(req: Request, res: Response): Promise<void> {
+        try {
+            const groupId = parseInt(req.params.groupId, 10);
+            const points = parseInt(req.body.points, 10);
+
+            if (isNaN(groupId) || isNaN(points)) {
+                res.status(400).json({ error: 'Invalid group id or points' });
+                return;
+            }
+
+            const group = await this.groupService.getById(groupId);
+            if (!group) {
+                res.status(404).json({ error: 'Group not found' });
+                return;
+            }
+
+            const updatedGroup = await this.groupService.addPoints(groupId, points);
+            res.status(200).json(updatedGroup);
+        }
+        catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
     async deleteGroup(req: Request, res: Response): Promise<void> {
         try {
             const groupId = parseInt(req.params.groupId, 10);

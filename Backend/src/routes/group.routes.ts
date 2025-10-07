@@ -82,7 +82,7 @@ router.get('/:groupId/users', (req, res) => groupController.getGroupUsers(req, r
 
 /**
  * @openapi
- * /groups/create:
+ * /groups:
  *   post:
  *     summary: Create multiple groups for a party
  *     tags:
@@ -130,7 +130,7 @@ router.get('/:groupId/users', (req, res) => groupController.getGroupUsers(req, r
  *       500:
  *         description: Internal Server Error
  */
-router.post('/create', (req, res) => groupController.createGroups(req, res));
+router.post('/', (req, res) => groupController.createGroups(req, res));
 
 /**
  * @openapi
@@ -261,5 +261,59 @@ router.put('/:groupId', (req, res) => groupController.updateGroupName(req, res))
  *         description: Internal Server Error
  */
 router.delete('/:groupId', (req, res) => groupController.deleteGroup(req, res));
+
+/**
+ * @openapi
+ * /groups/{groupId}/points:
+ *   patch:
+ *     summary: Add points to a group
+ *     tags:
+ *       - groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - points
+ *             properties:
+ *               points:
+ *                 type: integer
+ *                 example: 10
+ *     responses:
+ *       200:
+ *         description: Group updated with added points
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 name:
+ *                   type: string
+ *                 partyId:
+ *                   type: integer
+ *                 points:
+ *                   type: integer
+ *       400:
+ *         description: Invalid request (invalid group id or points)
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Group not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.patch('/:groupId/points', (req, res) => groupController.addPoints(req, res));
 
 export default router;
