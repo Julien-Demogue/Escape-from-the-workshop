@@ -1,9 +1,8 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { UserService } from '../services/user.service';
+import { AuthController } from '../controllers/auth.controller';
 
 const router = Router();
-const userService = new UserService();
+const authController = new AuthController();
 
 /**
  * @openapi
@@ -39,37 +38,7 @@ const userService = new UserService();
  *       500:
  *         description: Server error
  */
-router.post('/login', async (req: Request, res: Response) => {
-    try {
-        const hashedEmail = req.body.hashedEmail;
-        if (!hashedEmail) {
-            return res.status(400).json({ error: 'Hashed email is required' });
-        }
-
-        const user = await userService.getByEmail(hashedEmail);
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid hashed email' });
-        }
-
-        const secret = process.env.JWT_SECRET;
-        if (!secret) {
-            return res.status(500).json({ error: 'JWT secret not configured' });
-        }
-
-        const token = jwt.sign({
-            id: user.id, hashedEmail: user.hashedEmail
-        },
-            secret,
-            { expiresIn: '24h' }
-        )
-
-        return res.status(200).json({ token });
-    }
-    catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+router.post('/login', (req: Request, res: Response) => authController.login(req, res));
 
 /**
  * @openapi
@@ -119,20 +88,6 @@ router.post('/login', async (req: Request, res: Response) => {
  *       500:
  *         description: Server error
  */
-router.post('/register', (req: Request, res: Response) => {
-    try {
-        const { hashedEmail, username, color } = req.body;
-        if (!hashedEmail || !username || !color) {
-            return res.status(400).json({ error: 'Invalid parameters' });
-        }
-
-        const newUser = userService.createUser(hashedEmail, username, color);
-        return res.status(201).json(newUser);
-    }
-    catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
+router.post('/register', (req: Request, res: Response) => authController.register(req, res));
 
 export default router;
