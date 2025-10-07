@@ -5,6 +5,7 @@ import About from "./pages/About";
 import GroupAdmin from "./pages/GroupAdmin";
 import Group from "./pages/Group";
 import Dashboard from "./pages/Dashboard";
+import Puzzle from "./pages/Puzzle";
 
 const App: React.FC = () => (
   <Routes>
@@ -13,6 +14,7 @@ const App: React.FC = () => (
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group" element={<Group />} />
     <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/puzzle" element={<Puzzle />} />
   </Routes>
 );
 
