@@ -10,6 +10,7 @@ import Puzzle from "./pages/Puzzle";
 import ChambordEnigma from "./pages/ChambordEnigma";
 import BrissacEnigma from "./pages/BrissacEnigma";
 import MemoryLoire from "./pages/MemoryLoire";
+import CourierLoire from "./pages/CourierLoire";
 
 const App: React.FC = () => (
   <Routes>
@@ -20,6 +21,7 @@ const App: React.FC = () => (
     <Route path="/chambord-enigma" element={<ChambordEnigma />} />
     <Route path="/brissac-enigma" element={<BrissacEnigma />} />
     <Route path="/memory-loire" element={<MemoryLoire />} />
+    <Route path="/courier-loire" element={<CourierLoire />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group" element={<Group />} />
     <Route path="/dashboard" element={<Dashboard />} />
