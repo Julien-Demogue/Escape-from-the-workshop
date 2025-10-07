@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom"
+import ThickBorderButton from "../components/ui/ThickBorderButton"
+import ThickBorderInput from "../components/ui/ThickBorderInput"
 
 const Home = () => {
   return (
