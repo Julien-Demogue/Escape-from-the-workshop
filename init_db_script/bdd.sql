@@ -10,24 +10,23 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     hashedEmail VARCHAR(256) NOT NULL UNIQUE,
     color VARCHAR(12) NOT NULL
-
 );
-CREATE TABLE IF NOT EXISTS infos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(100) NOT NULL,
-   description TEXT NOT NULL
 
-);
 
 CREATE TABLE IF NOT EXISTS challenges (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    infoId INT NOT NULL,
     flag VARCHAR(100) NOT NULL,
     reward INT NOT NULL,
     hint VARCHAR(255),
-    points INT NOT NULL,
-    FOREIGN KEY (infoId) REFERENCES infos(id)
+    points INT NOT NULL
+);
 
+CREATE TABLE IF NOT EXISTS infos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+   description TEXT NOT NULL,
+   challengeId INT NOT NULL,
+   FOREIGN KEY (challengeId) REFERENCES challenges(id)
 );
 
 CREATE TABLE if not exists illustrations (
@@ -35,7 +34,6 @@ CREATE TABLE if not exists illustrations (
     infoId INT NOT NULL,
     url VARCHAR(255) NOT NULL,
     FOREIGN KEY (infoId) REFERENCES infos(id)
-
 );
 
 CREATE table if not EXISTS parties (
