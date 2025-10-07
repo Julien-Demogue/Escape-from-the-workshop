@@ -30,11 +30,10 @@ model User {
 }
 
 model Party {
-  id          Int      @id @default(autoincrement())
-  name        String
+  id          Int       @id @default(autoincrement())
   code        String
-  endDate     DateTime
   adminUserId Int
+  endTime     DateTime?
 
   // relations
   adminUser User    @relation(fields: [adminUserId], references: [id])

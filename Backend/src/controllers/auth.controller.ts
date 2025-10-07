@@ -38,7 +38,7 @@ export class AuthController {
         }
     }
 
-    register(req: Request, res: Response): void {
+    async register(req: Request, res: Response): Promise<void> {
         try {
             const { hashedEmail, username, color } = req.body;
             if (!hashedEmail || !username || !color) {
@@ -46,7 +46,7 @@ export class AuthController {
                 return;
             }
 
-            const newUser = this.userService.createUser(hashedEmail, username, color);
+            const newUser = await this.userService.createUser(hashedEmail, username, color);
             res.status(201).json(newUser);
         }
         catch (error) {
