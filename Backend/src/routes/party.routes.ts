@@ -7,6 +7,31 @@ router.use(authMiddleware);
 
 /**
  * @openapi
+ * /parties/{id}:
+ *   get:
+ *     summary: Get a party by its id
+ *     tags:
+ *       - parties
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Party found
+ *       400:
+ *         description: Invalid party id
+ *       404:
+ *         description: Party not found
+ */
+router.get('/:id', (req, res) => partyController.getById(req, res));
+
+/**
+ * @openapi
  * /parties/code/{code}:
  *   get:
  *     summary: Get a party by its code (Not working for now)

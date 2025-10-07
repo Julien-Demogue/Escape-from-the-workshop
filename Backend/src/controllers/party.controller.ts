@@ -8,6 +8,29 @@ export class PartyController {
         this.partyService = new PartyService();
     }
 
+    async getById(req: Request, res: Response): Promise<void> {
+        try {
+            const partyId = parseInt(req.params.id, 10);
+
+            if (isNaN(partyId)) {
+                res.status(400).json({ error: 'Invalid party id' });
+                return;
+            }
+
+            const party = await this.partyService.getById(partyId);
+            if (!party) {
+                res.status(404).json({ error: 'Party not found' });
+                return;
+            }
+
+            res.status(200).json(party);
+        }
+        catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
     async getByCode(req: Request, res: Response): Promise<void> {
         try {
             const code = req.params.code;
