@@ -226,44 +226,6 @@ router.put('/:groupId', (req, res) => groupController.updateGroupName(req, res))
 
 /**
  * @openapi
- * /groups/{groupId}:
- *   delete:
- *     summary: Delete a group
- *     tags:
- *       - groups
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: groupId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Group deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 name:
- *                   type: string
- *       400:
- *         description: Invalid request (invalid group id)
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Group not found
- *       500:
- *         description: Internal Server Error
- */
-router.delete('/:groupId', (req, res) => groupController.deleteGroup(req, res));
-
-/**
- * @openapi
  * /groups/{groupId}/points:
  *   patch:
  *     summary: Add points to a group
@@ -315,5 +277,84 @@ router.delete('/:groupId', (req, res) => groupController.deleteGroup(req, res));
  *         description: Internal Server Error
  */
 router.patch('/:groupId/points', (req, res) => groupController.addPoints(req, res));
+
+/**
+ * @openapi
+ * /groups/{groupId}/complete-challenge:
+ *   post:
+ *     summary: Mark a challenge as completed for a group
+ *     tags:
+ *       - groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - challengeId
+ *             properties:
+ *               challengeId:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Challenge marked as completed for the group
+ *       400:
+ *         description: Invalid request (invalid group id or challenge id)
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Group or challenge not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.post('/:groupId/complete-challenge', (req, res) => groupController.completeChallengeForGroup(req, res));
+
+/**
+ * @openapi
+ * /groups/{groupId}:
+ *   delete:
+ *     summary: Delete a group
+ *     tags:
+ *       - groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Group deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 name:
+ *                   type: string
+ *       400:
+ *         description: Invalid request (invalid group id)
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Group not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.delete('/:groupId', (req, res) => groupController.deleteGroup(req, res));
 
 export default router;

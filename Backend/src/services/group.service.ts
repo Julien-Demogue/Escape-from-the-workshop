@@ -23,13 +23,27 @@ export class GroupService {
     async createGroup(partyId: number): Promise<Group> {
         const code = generateCode(4);
 
-        return this.prisma.group.create({
+        const newGroup = await this.prisma.group.create({
             data: {
                 partyId,
                 code,
                 name: `Group ${code}`,
             },
         });
+
+        // Initialise challenge progress
+        const challenges = await this.prisma.challenge.findMany();
+        for (const challenge of challenges) {
+            await this.prisma.challengeProgress.create({
+                data: {
+                    challengeId: challenge.id,
+                    groupId: newGroup.id,
+                    isCompleted: false,
+                },
+            });
+        }
+
+        return newGroup;
     }
 
     async joinGroup(groupId: number, userId: number): Promise<GroupUser> {
@@ -52,6 +66,13 @@ export class GroupService {
         return this.prisma.group.update({
             where: { id: groupId },
             data: { score: { increment: points } },
+        });
+    }
+
+    async completeChallengeForGroup(groupId: number, challengeId: number): Promise<void> {
+        await this.prisma.challengeProgress.updateMany({
+            where: { groupId, challengeId },
+            data: { isCompleted: true },
         });
     }
 

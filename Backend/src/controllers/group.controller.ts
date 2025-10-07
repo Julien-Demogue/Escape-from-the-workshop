@@ -1,14 +1,17 @@
 import { Request, Response } from 'express';
 import { GroupService } from '../services/group.service';
 import { PartyService } from '../services/party.service';
+import { ChallengeService } from '../services/challenge.service';
 
 export class GroupController {
     private groupService: GroupService;
     private partyService: PartyService;
+    private challengeService: ChallengeService;
 
     constructor() {
         this.groupService = new GroupService();
         this.partyService = new PartyService();
+        this.challengeService = new ChallengeService();
     }
 
     async getGroupsByPartyId(req: Request, res: Response): Promise<void> {
@@ -159,6 +162,37 @@ export class GroupController {
 
             const updatedGroup = await this.groupService.addPoints(groupId, points);
             res.status(200).json(updatedGroup);
+        }
+        catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
+    async completeChallengeForGroup(req: Request, res: Response): Promise<void> {
+        try {
+            const groupId = parseInt(req.params.groupId, 10);
+            const challengeId = parseInt(req.body.challengeId, 10);
+
+            if (isNaN(groupId) || isNaN(challengeId)) {
+                res.status(400).json({ error: 'Invalid group id or challenge id' });
+                return;
+            }
+
+            const group = await this.groupService.getById(groupId);
+            if (!group) {
+                res.status(404).json({ error: 'Group not found' });
+                return;
+            }
+
+            const challenge = await this.challengeService.getById(challengeId);
+            if (!challenge) {
+                res.status(404).json({ error: 'Challenge not found' });
+                return;
+            }
+
+            await this.groupService.completeChallengeForGroup(groupId, challengeId);
+            res.status(200).json({ message: 'Challenge marked as completed for the group' });
         }
         catch (error) {
             console.error(error);
