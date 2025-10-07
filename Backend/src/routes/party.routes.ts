@@ -12,6 +12,8 @@ router.use(authMiddleware);
  *     summary: Get a party by its code (Not working for now)
  *     tags:
  *       - parties
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: code
