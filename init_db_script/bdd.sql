@@ -1,6 +1,9 @@
 CREATE DATABASE if not exists escape_game;
 USE escape_game;
 
+CREATE USER if not EXISTS 'exporter'@'%' IDENTIFIED BY 'exporterpassword' WITH MAX_USER_CONNECTIONS 3;
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'%';
+
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -9,17 +12,18 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE TABLE IF NOT EXISTS infos (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
    description TEXT NOT NULL
 
 );
 
 CREATE TABLE IF NOT EXISTS challenges (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(100) NOT NULL,
     infoId INT NOT NULL,
     flag VARCHAR(100) NOT NULL,
     reward INT NOT NULL,
     hint VARCHAR(255),
+    points INT NOT NULL,
     FOREIGN KEY (infoId) REFERENCES infos(id)
 
 );
