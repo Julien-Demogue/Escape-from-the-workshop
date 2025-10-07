@@ -16,6 +16,9 @@ const Home = () => {
       <Link to="/puzzle" className="red">
         Accéder au puzzle
       </Link>
+      <Link to="/heraldry-quiz" className="red">
+        Accéder au quiz héraldique
+      </Link>
     </div>
   )
 }
