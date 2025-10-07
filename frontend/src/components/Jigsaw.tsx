@@ -46,12 +46,12 @@ const Jigsaw: React.FC<JigsawProps> = ({
 
   const height = useMemo(() => Math.round((width * ROWS) / COLS), [width]);
 
-  function reshuffle() {
+ /* function reshuffle() {
     const ids = shuffle(Array.from({ length: pieceCount }, (_, i) => i));
     setPieces(ids.map((id, i) => ({ id, currentIndex: i })));
     setSelected(null);
     setIsSolved(false);
-  }
+  }*/
 
   function swapByBoardIndex(aIdx: number, bIdx: number) {
     setPieces((prev) => {
