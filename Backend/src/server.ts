@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
   socket.on('join-group', async (groupId: string) => {
     socket.join(groupId);
     try {
-      const groupMessages = await messageService.getMessagesFromGroup(Number(groupId));
+      const groupMessages = await messageService.getMessagesByGroupId(Number(groupId));
       console.log(groupMessages)
       socket.emit('message-history', groupMessages);
 
