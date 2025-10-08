@@ -11,11 +11,12 @@ import ChambordEnigma from "./pages/ChambordEnigma";
 import BrissacEnigma from "./pages/BrissacEnigma";
 import MemoryLoire from "./pages/MemoryLoire";
 import CourierLoire from "./pages/CourierLoire";
+import WebSocketTest from "./pages/WebsocketTest";
 
 const App: React.FC = () => (
   <Routes>
     <Route path="/" element={<Home />} />
-    <Route path="/about" element={<About />} />
+    
     <Route path="/puzzle" element={<Puzzle />} />
     <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
     <Route path="/chambord-enigma" element={<ChambordEnigma />} />
@@ -25,7 +26,8 @@ const App: React.FC = () => (
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group" element={<Group />} />
     <Route path="/dashboard" element={<Dashboard />} />
-
+    <Route path="/websocket-test" element={<WebSocketTest />} />
+    <Route path="/about" element={<About />} />
   </Routes>
 );
 

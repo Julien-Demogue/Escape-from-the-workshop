@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { MessageService } from '../services/message.service';
 import { GroupService } from '../services/group.service';
+import { CreateMessageDto } from '../models/message.model';
 
 export class MessageController {
     private messageService: MessageService;
@@ -26,7 +27,7 @@ export class MessageController {
                 return;
             }
 
-            const messages = await this.messageService.getMessagesByGroupId(groupId);
+            const messages = await this.messageService.getMessagesFromGroup(groupId);
             res.status(200).json(messages);
         }
         catch (error) {
@@ -52,7 +53,14 @@ export class MessageController {
                 return;
             }
 
-            const message = await this.messageService.createMessage(groupId, senderId, content);
+            const messageSent: CreateMessageDto = {
+                groupId,
+                content,
+                senderId,
+                sendDate: new Date()
+            }
+
+            const message = await this.messageService.sendMessage(messageSent);
             res.status(201).json(message);
         }
         catch (error) {

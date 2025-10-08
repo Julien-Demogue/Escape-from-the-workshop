@@ -43,8 +43,8 @@ io.on('connection', (socket) => {
   socket.on('join-group', async (groupId: string) => {
     socket.join(groupId);
     try {
-      const groupMessages = await messageService.getMessagesFromGroup(groupId);
-      
+      const groupMessages = await messageService.getMessagesFromGroup(Number(groupId));
+      console.log(groupMessages)
       socket.emit('message-history', groupMessages);
 
       socket.to(groupId).emit('user-joined', {
