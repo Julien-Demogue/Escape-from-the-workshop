@@ -8,13 +8,13 @@ import {
 } from "../state/gameResults";
 
 import chambord from "../assets/images/blason/blason-chambord.png";
-import cheverny from "../assets/images/blason/Blason_cheverny41.svg.png";
-import blois from "../assets/images/blason/Blason_de_Blois.png";
+import cheverny from "../assets/images/blason/Blason_cheverny.svg.png";
+import blois from "../assets/images/blason/Chateau_de_Blois.png";
 import azay from "../assets/images/blason/blason-azay-le-rideau.png";
 import chenonceaux from "../assets/images/blason/blason-chenonceaux.png";
-import amboise from "../assets/images/blason/Blason_ville_fr_Amboise_(Indre-et-Loire).svg.png";
+import amboise from "../assets/images/blason/Blason_chateau_Amboise.svg.png";
 import saumur from "../assets/images/blason/blason-saumur.png";
-import villandry from "../assets/images/blason/Blason_ville_fr_Villandry_(Indre-et-Loire).svg.png";
+import villandry from "../assets/images/blason/Blason_chateau_Villandry.svg.png";
 
 import { Link } from "react-router-dom";
 
