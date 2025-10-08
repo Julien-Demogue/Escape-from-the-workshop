@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ThickBorderBurgerMenu from "../components/ui/ThickBorderBurgerMenu";
 import QuestionMark from "../components/ui/QuestionMark";
+import ContextPopup from "../components/ui/ContextPopup";
+import { SOLO_CONTEXT } from "../constants/contextText";
 
 interface GameState {
   [key: string]: 'completed' | 'failed' | 'unvisited';
@@ -22,19 +24,14 @@ const Dashboard: React.FC = () => {
     const shown = localStorage.getItem('contextPopupShown');
     return shown !== 'true';
   });
+  const [contextText] = useState(SOLO_CONTEXT);
   const [gamesState, setGamesState] = useState<GameState>(() => {
     const saved = localStorage.getItem('gamesState');
     return saved ? JSON.parse(saved) : INITIAL_GAMES_STATE;
   });
 
   useEffect(() => {
-    if (showPopup === false) {
-      localStorage.setItem('contextPopupShown', 'true');
-    }
-  }, [showPopup]);
-
-  useEffect(() => {
-    if (showPopup === false) {
+    if (!showPopup) {
       localStorage.setItem('contextPopupShown', 'true');
     }
   }, [showPopup]);
@@ -71,6 +68,13 @@ const Dashboard: React.FC = () => {
           }},
         ]}
       />
+      
+      {/* Pop-up de contexte */}
+      <ContextPopup 
+        isOpen={showPopup}
+        onClose={() => setShowPopup(false)}
+        text={contextText}
+      />
 
       {/* Contenu principal */}
       <div className="w-full h-full p-8">
@@ -104,28 +108,6 @@ const Dashboard: React.FC = () => {
 
       </div>
       
-      {/* Pop-up de contexte */}
-      {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg border-4 border-black relative w-3/4 max-w-3xl">
-            <button 
-              onClick={() => setShowPopup(false)}
-              className="absolute top-4 right-4 text-2xl font-bold hover:text-gray-600"
-            >
-              ×
-            </button>
-            <div className="mt-4">
-              <h2 className="text-2xl font-bold mb-4">Contexte de la partie</h2>
-              <p className="text-lg mb-4">
-                Bienvenue dans l'atelier du Père Noël ! Les lutins ont besoin d'aide pour préparer les cadeaux à temps.
-              </p>
-              <p className="text-lg mb-4">
-                Travaillez en équipe pour résoudre les énigmes et aider les lutins à terminer leur travail avant Noël.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

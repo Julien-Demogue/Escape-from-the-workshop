@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 
 import chambord from "../assets/images/blason/blason-chambord.png";
 import cheverny from "../assets/images/blason/Blason_cheverny41.svg.png";
@@ -144,6 +145,7 @@ export default function HeraldryQuiz() {
 
   return (
     <div style={styles.wrap}>
+      <ThickBorderCloseButton />
       <div style={styles.card}>
         <h1 style={styles.title}>Guess the Coat of Arms</h1>
 

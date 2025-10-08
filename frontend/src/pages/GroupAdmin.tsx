@@ -183,8 +183,8 @@ const GroupAdmin: React.FC = () => {
   const gameCode = "ABCXYZ";
 
   return (
-    <div className="relative w-full h-screen p-8">
-      <div className="absolute top-8 right-8 flex flex-col items-center gap-4">
+    <div className="relative w-full min-h-screen p-8 overflow-y-auto">
+      <div className="fixed top-8 right-8 flex flex-col items-center gap-4 z-20">
         <ThickBorderCard>
           {gameCode}
         </ThickBorderCard>
@@ -343,7 +343,7 @@ const GroupAdmin: React.FC = () => {
                   onClick={() => setSelectedGroupId(null)}
                 />
                 <div 
-                  className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-10"
+                  className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-10 overflow-y-auto"
                   style={{ 
                     borderTopLeftRadius: '18px',
                     borderBottomLeftRadius: '18px',

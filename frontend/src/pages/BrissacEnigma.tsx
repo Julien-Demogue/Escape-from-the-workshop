@@ -1,5 +1,6 @@
 // src/pages/BrissacEnigma.tsx
 import { useState } from "react";
+import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 
 // If you prefer an image for the alphabet, add it and use the <img /> in Hint 3:
 // import caesarAlphabetImg from "../assets/images/caesar/caesar-alphabet.png";
@@ -86,6 +87,7 @@ export default function BrissacEnigma() {
 
   return (
     <div style={styles.wrap}>
+      <ThickBorderCloseButton />
       <div style={styles.card}>
         <h1 style={{ margin: 0 }}>Enigma 4 — Brissac</h1>
         <p style={styles.subtitle}>
@@ -133,13 +135,7 @@ export default function BrissacEnigma() {
             🔤 <strong>Hint 3:</strong> Use this alphabet to decode by hand:
             <div style={{ marginTop: 8 }}>
               {/* Option A: show your own image */}
-              {false && (
-                <img
-                  src={"" /* caesarAlphabetImg */}
-                  alt="Caesar alphabet"
-                  style={{ width: "100%", borderRadius: 12, border: "1px solid #e5e7eb" }}
-                />
-              )}
+              {/* Image option removed as it's not being used */}
               {/* Option B: inline diagram (no assets needed) */}
               <CaesarAlphabetDiagram shiftBack={10} />
             </div>
