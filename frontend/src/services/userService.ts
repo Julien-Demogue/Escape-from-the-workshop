@@ -19,4 +19,9 @@ export default {
             throw err;
         }
     },
+
+    async getUsersByGroupId(groupId: number): Promise<User[]> {
+        const res = await api.get<User[]>(`/groups/${groupId}/users`);
+        return res.data;
+    },
 }

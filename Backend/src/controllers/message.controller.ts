@@ -27,7 +27,7 @@ export class MessageController {
                 return;
             }
 
-            const messages = await this.messageService.getMessagesFromGroup(groupId);
+            const messages = await this.messageService.getMessagesByGroupId(groupId);
             res.status(200).json(messages);
         }
         catch (error) {

@@ -1,4 +1,4 @@
-import { PrismaClient, Group, GroupUser } from "../generated/prisma";
+import { PrismaClient, Group, GroupUser, User } from "../generated/prisma";
 import { generateCode } from "../utils/codeGenerator";
 
 export class GroupService {
@@ -14,10 +14,6 @@ export class GroupService {
 
     async getGroupsByPartyId(partyId: number): Promise<Group[]> {
         return this.prisma.group.findMany({ where: { partyId } });
-    }
-
-    async getGroupUsers(groupId: number): Promise<GroupUser[]> {
-        return this.prisma.groupUser.findMany({ where: { groupId } });
     }
 
     async createGroup(partyId: number): Promise<Group> {

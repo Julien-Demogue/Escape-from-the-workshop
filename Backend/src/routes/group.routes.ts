@@ -47,41 +47,6 @@ router.get('/party/:partyId', (req, res) => groupController.getGroupsByPartyId(r
 
 /**
  * @openapi
- * /groups/{groupId}/users:
- *   get:
- *     summary: Get users of a specific group
- *     tags:
- *       - groups
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: groupId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of users in the group
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *       400:
- *         description: Invalid group id
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Group not found
- *       500:
- *         description: Internal Server Error
- */
-router.get('/:groupId/users', (req, res) => groupController.getGroupUsers(req, res));
-
-/**
- * @openapi
  * /groups:
  *   post:
  *     summary: Create multiple groups for a party

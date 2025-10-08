@@ -1,5 +1,4 @@
 import { api } from "../config/axios.config";
-import type { User } from "./userService";
 
 export type Group = {
     id: number;
@@ -12,11 +11,6 @@ export type Group = {
 export default {
     async getByPartyId(partyId: number): Promise<Group[]> {
         const res = await api.get<Group[]>(`/groups/party/${partyId}`);
-        return res.data;
-    },
-
-    async getGroupUsers(groupId: number): Promise<User[]> {
-        const res = await api.get<User[]>(`/groups/${groupId}/users`);
         return res.data;
     },
 

@@ -39,13 +39,13 @@ export class MessageService {
     };
   }
 
-  async getMessagesFromGroup(groupId: number): Promise<Message[]> {
-    const groupMessages =  this.prisma.message.findMany({
-      where: { groupId: Number(groupId) },
+  async getMessagesByGroupId(groupId: number): Promise<Message[]> {
+    const groupMessages = this.prisma.message.findMany({
+      where: { groupId: groupId },
       orderBy: { sendDate: 'asc' }
     });
 
-    const groupUsers = await this.userService.getUsersFromGroup(Number(groupId));
+    const groupUsers = await this.userService.getUsersByGroupId(groupId);
 
     const messagesConvertedInTypeMessage: Message[] = (await groupMessages).map(msg => ({
       id: msg.id,

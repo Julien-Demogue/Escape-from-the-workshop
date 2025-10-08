@@ -32,30 +32,6 @@ export class GroupController {
         }
     }
 
-    async getGroupUsers(req: Request, res: Response): Promise<void> {
-        try {
-            const groupId = parseInt(req.params.groupId, 10);
-
-            if (isNaN(groupId)) {
-                res.status(400).json({ error: 'Invalid group id' });
-                return;
-            }
-
-            const group = await this.groupService.getById(groupId);
-            if (!group) {
-                res.status(404).json({ error: 'Group not found' });
-                return;
-            }
-
-            const groupUsers = await this.groupService.getGroupUsers(groupId);
-            res.status(200).json(groupUsers);
-        }
-        catch (error) {
-            console.error(error);
-            res.status(500).json({ error: 'Internal Server Error' });
-        }
-    }
-
     async createGroups(req: Request, res: Response): Promise<void> {
         try {
             const partyId = parseInt(req.body.partyId, 10);
