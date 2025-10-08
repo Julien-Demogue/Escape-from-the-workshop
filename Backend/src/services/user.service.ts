@@ -20,6 +20,14 @@ export class UserService {
             data: { hashedEmail, username, color }
         });
     }
+
+    async getUsersFromGroup(groupId: number): Promise<User[]> {
+        const groupUsers = await this.prisma.groupUser.findMany({
+            where: { groupId },
+            include: { user: true }
+        });
+        return groupUsers.map(gu => gu.user);
+    }
 }
 
 export default new UserService();

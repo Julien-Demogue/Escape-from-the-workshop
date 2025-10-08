@@ -1,20 +1,100 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
 import routes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger';
 import client from 'prom-client';
+import { MessageService } from './services/message.service';
+import { Message } from './generated/prisma';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Créer le serveur HTTP pour Socket.IO
+const httpServer = createServer(app);
+
+// Configuration Socket.IO avec CORS
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:5173", // URL de votre frontend
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// CORS pour Express (ajouté pour éviter les problèmes de CORS)
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(routes);
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+const messageService = new MessageService();
+
+io.on('connection', (socket) => {
+  console.log('🔌 Utilisateur connecté:', socket.id);
+
+  socket.on('join-group', async (groupId: string) => {
+    socket.join(groupId);
+    try {
+      const groupMessages = await messageService.getMessagesFromGroup(groupId);
+      
+      socket.emit('message-history', groupMessages);
+
+      socket.to(groupId).emit('user-joined', {
+        message: `Un utilisateur a rejoint le groupe`,
+        socketId: socket.id
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des messages:', error);
+
+      // Envoyer une erreur au client
+      socket.emit('error', {
+        message: 'Impossible de récupérer l\'historique des messages',
+        type: 'HISTORY_LOAD_ERROR'
+      });
+    }
+  });
+
+  socket.on('send-message', async (data) => {
+    console.log('💬 Message reçu:', data);
+
+    try {
+      const sendMessage: Message = await messageService.sendMessage({
+        groupId: Number(data.groupId),
+        content: data.content,
+        senderId: Number(data.senderId),
+        sendDate: new Date()
+      });
+
+      io.to(data.groupId).emit('receive-message', {
+        id: sendMessage.id,
+        content: sendMessage.content,
+        senderId: sendMessage.senderId,
+        sendDate: sendMessage.sendDate,
+        socketId: socket.id
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'envoi du message:', error);
+
+      // Envoyer une erreur au client
+      socket.emit('error', {
+        message: 'Impossible d\'envoyer le message',
+        type: 'MESSAGE_SEND_ERROR'
+      });
+    }
+
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Utilisateur déconnecté:', socket.id);
+  });
 });
 
 // Créer un registre pour Prometheus
@@ -40,7 +120,7 @@ register.registerMetric(httpRequestDuration);
 
 const httpErrorCounter = new client.Counter({
   name: 'http_errors_total',
-  help: 'Nombre total d’erreurs HTTP',
+  help: 'Nombre total derreurs HTTP',
   labelNames: ['method', 'route', 'status'] as const,
 });
 register.registerMetric(httpErrorCounter);
@@ -65,7 +145,7 @@ app.use((req: Request, res, next) => {
     httpRequestCounter.inc(labels);
     httpRequestDuration.observe(labels, durationInSeconds);
 
-    // Si erreur (code 4xx ou 5xx), on l’enregistre
+    // Si erreur (code 4xx ou 5xx), on l'enregistre
     if (res.statusCode >= 400) {
       httpErrorCounter.inc(labels);
     }
@@ -83,3 +163,14 @@ app.get('/metrics', async (req: Request, res: Response) => {
     res.status(500).end((err as Error).message);
   }
 });
+
+// IMPORTANT : Utiliser httpServer au lieu d'app.listen()
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🔌 Socket.IO configuré et prêt`);
+  console.log(`📊 Métriques Prometheus disponibles sur /metrics`);
+  console.log(`📖 Documentation Swagger disponible sur /swagger`);
+});
+
+// Exporter io pour l'utiliser ailleurs si nécessaire
+export { io };
