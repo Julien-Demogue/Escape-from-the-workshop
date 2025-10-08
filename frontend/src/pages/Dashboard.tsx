@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ThickBorderBurgerMenu from "../components/ui/ThickBorderBurgerMenu";
 import QuestionMark from "../components/ui/QuestionMark";
 import ContextPopup from "../components/ui/ContextPopup";
+import Timer from "../components/ui/Timer";
 import { SOLO_CONTEXT } from "../constants/contextText";
 
 interface GameState {
@@ -56,6 +57,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen bg-white">
+      <Timer />
       {/* Menu latéral avec code de partie intégré */}
       <ThickBorderBurgerMenu
         gameCode={gameCode}
