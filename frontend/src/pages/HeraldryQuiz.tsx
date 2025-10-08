@@ -7,14 +7,14 @@ import {
   onGameResultsChange,
 } from "../state/gameResults";
 
-import chambord from "../assets/images/blason/blason-chambord.png";
-import cheverny from "../assets/images/blason/Blason_cheverny.svg.png";
-import blois from "../assets/images/blason/Chateau_de_Blois.png";
-import azay from "../assets/images/blason/blason-azay-le-rideau.png";
-import chenonceaux from "../assets/images/blason/blason-chenonceaux.png";
-import amboise from "../assets/images/blason/Blason_chateau_Amboise.svg.png";
-import saumur from "../assets/images/blason/blason-saumur.png";
-import villandry from "../assets/images/blason/Blason_chateau_Villandry.svg.png";
+import chambord from "../assets/images/blason/blason-Chambord.png";
+import cheverny from "../assets/images/blason/Blason_Cheverny.svg.png";
+import blois from "../assets/images/blason/Blason_Blois.png";
+import azay from "../assets/images/blason/blason-Azay-le-rideau.png";
+import chenonceaux from "../assets/images/blason/blason-Chenonceaux.png";
+import amboise from "../assets/images/blason/Blason_Amboise.svg.png";
+import saumur from "../assets/images/blason/blason-Saumur.png";
+import villandry from "../assets/images/blason/Blason_Villandry.svg.png";
 
 import { Link } from "react-router-dom";
 

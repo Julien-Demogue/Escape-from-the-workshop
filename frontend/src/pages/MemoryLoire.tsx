@@ -188,9 +188,9 @@ export default function MemoryLoire() {
     <div style={{ margin: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
       <ThickBorderCloseButton />
       <div style={styles.header}>
-        <h1 style={{ margin: 0 }}>Memory de la Loire — {PAIRS} paires</h1>
+        <h1 style={{ margin: 0 }}>Memory de la Loire — {PAIRS} paires &nbsp;</h1>
         <div style={styles.meta}>
-          <span>Coups&nbsp;: <strong>{moves}</strong></span>
+          <span>Coups &nbsp;: <strong>{moves}</strong> /60 </span>
           <span>Temps&nbsp;: <strong>{formatDuration(elapsed)}</strong></span>
           <button onClick={reshuffleAndRestart} style={styles.resetBtn}>Recommencer</button>
         </div>

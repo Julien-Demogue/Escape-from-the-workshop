@@ -13,6 +13,8 @@ import BrissacEnigma from "./pages/BrissacEnigma";
 import MemoryLoire from "./pages/MemoryLoire";
 import CourierLoire from "./pages/CourierLoire";
 import WebSocketTest from "./pages/WebsocketTest";
+import Register from "./pages/Register";
+import Login from './pages/Login';
 
 // Nouvelles pages magiques
 import MagicalHome from "./pages/MagicalHome";
