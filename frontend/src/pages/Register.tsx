@@ -41,6 +41,7 @@ const Register = () => {
         placeholder="Renseignez votre email"
         onChange={(e) => setEmail(e.target.value)}
         value={email}
+        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <input
         name="username"
@@ -48,6 +49,7 @@ const Register = () => {
         placeholder="Renseignez votre nom d'utilisateur"
         onChange={(e) => setUsername(e.target.value)}
         value={username}
+        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <button
         onClick={onSubmit}
