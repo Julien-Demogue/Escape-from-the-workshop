@@ -79,7 +79,7 @@ function MiniMap({ route }: { route: Place[] }) {
 }
 
 /** ---- Página con DnD nativo ---- */
-const GOAL_KM = 250; // con 10 castillos la meta puede ser más alta—ajústala si quieres
+const GOAL_KM = 166; // con 10 castillos la meta puede ser más alta—ajústala si quieres
 
 export default function CourierLoire() {
   const media = useCastleMedia();
