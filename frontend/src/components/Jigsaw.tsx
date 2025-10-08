@@ -1,12 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, forwardRef, useImperativeHandle } from "react";
+
+export type JigsawHandle = {
+  solveNow: () => void;
+  reshuffle: () => void;
+};
 
 type JigsawProps = {
   imageUrl: string;
   width?: number;        // px, default 640
   innerGap?: number;     // px between tiles (small), default 3
   outerPadding?: number; // px around the outside frame, default equals innerGap
-  radius?: number;       // outer rounded corners, default 16
+  radius?: number;       // outer rounded corners, default 20
   onSolved?: () => void;
+  onShuffle?: () => void; // callback when user clicks Shuffle
   className?: string;
 };
 
@@ -24,15 +30,19 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-const Jigsaw: React.FC<JigsawProps> = ({
-  imageUrl,
-  width = 640,
-  innerGap = 3,
-  outerPadding,
-  radius = 20,
-  onSolved,
-  className = "",
-}) => {
+const Jigsaw = forwardRef<JigsawHandle, JigsawProps>(function Jigsaw(
+  {
+    imageUrl,
+    width = 640,
+    innerGap = 3,
+    outerPadding,
+    radius = 20,
+    onSolved,
+    onShuffle,
+    className = "",
+  },
+  ref
+) {
   const pieceCount = ROWS * COLS;
 
   // start already shuffled
@@ -46,12 +56,27 @@ const Jigsaw: React.FC<JigsawProps> = ({
 
   const height = useMemo(() => Math.round((width * ROWS) / COLS), [width]);
 
- function reshuffle() {
+  function doReshuffle() {
     const ids = shuffle(Array.from({ length: pieceCount }, (_, i) => i));
     setPieces(ids.map((id, i) => ({ id, currentIndex: i })));
     setSelected(null);
     setIsSolved(false);
+    onShuffle?.();
   }
+
+  function doSolveNow() {
+    // set each piece into its correct position
+    const ids = Array.from({ length: pieceCount }, (_, i) => i);
+    setPieces(ids.map((id) => ({ id, currentIndex: id })));
+    setSelected(null);
+    // onSolved will be triggered by the effect below
+  }
+
+  // expose API
+  useImperativeHandle(ref, () => ({
+    solveNow: doSolveNow,
+    reshuffle: doReshuffle,
+  }));
 
   function swapByBoardIndex(aIdx: number, bIdx: number) {
     setPieces((prev) => {
@@ -145,20 +170,20 @@ const Jigsaw: React.FC<JigsawProps> = ({
       className={className}
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
-      <div style={{ marginBottom: 12, display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
         <span style={{ fontSize: 14, opacity: 0.8 }}>
           Drag or tap two tiles to swap
         </span>
         <button
-          onClick={reshuffle}
+          onClick={doReshuffle}
           style={{
-            padding: '4px 10px',
-            borderRadius: '4px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '14px'
+            padding: "4px 10px",
+            borderRadius: "4px",
+            backgroundColor: "#3b82f6",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "14px",
           }}
         >
           Shuffle
@@ -170,10 +195,10 @@ const Jigsaw: React.FC<JigsawProps> = ({
         style={{
           width,
           height,
-          padding: pad,           // outside spacing
+          padding: pad,
           background: "#fff",
-          borderRadius: radius,   // rounded corners ONLY on the frame
-          overflow: "hidden",     // hide inner corners
+          borderRadius: radius,
+          overflow: "hidden",
           boxShadow: "0 6px 24px rgba(0,0,0,0.1)",
         }}
       >
@@ -184,7 +209,7 @@ const Jigsaw: React.FC<JigsawProps> = ({
             display: "grid",
             gridTemplateColumns: `repeat(${COLS}, 1fr)`,
             gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-            gap: innerGap, // small spacing between tiles
+            gap: innerGap,
           }}
         >
           {cells}
@@ -208,6 +233,7 @@ const Jigsaw: React.FC<JigsawProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default Jigsaw;
+export { ROWS, COLS };

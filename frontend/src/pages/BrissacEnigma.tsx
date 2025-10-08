@@ -1,12 +1,16 @@
 // src/pages/BrissacEnigma.tsx
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
+import {
+  codePartFor,
+  reportGameResult,
+  readGameResults,
+  onGameResultsChange,
+} from "../state/gameResults";
 
-// If you prefer an image for the alphabet, add it and use the <img /> in Hint 3:
-// import caesarAlphabetImg from "../assets/images/caesar/caesar-alphabet.png";
-
+// Cipher data
 const CIPHERTEXT = "NKWO FOBDO";
-const VALID_ANSWERS = ["DAME VERTE"]; // add variants if you like (e.g., "LA DAME VERTE")
+const VALID_ANSWERS = ["DAME VERTE", "LA DAME VERTE"];
 
 // --- helpers ---
 function normalize(str: string): string {
@@ -28,7 +32,7 @@ function CaesarAlphabetDiagram({ shiftBack = 10 }: { shiftBack?: number }) {
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>
-        Alphabet helper (read by shifting −{shiftBack})
+        Alphabet d’aide (lecture avec décalage −{shiftBack})
       </div>
       <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 12 }}>
         <svg width="100%" height="120" viewBox="0 0 780 120">
@@ -50,14 +54,23 @@ function CaesarAlphabetDiagram({ shiftBack = 10 }: { shiftBack?: number }) {
             </g>
           ))}
           <text x={5} y={8} fontSize="12" fill="#6b7280">A → Z</text>
-          <text x={5} y={68} fontSize="12" fill="#6b7280">Read with −{shiftBack}</text>
+          <text x={5} y={68} fontSize="12" fill="#6b7280">Lire avec −{shiftBack}</text>
         </svg>
       </div>
       <div style={{ color: "#6b7280", fontSize: 12, marginTop: 6 }}>
-        Example: N → D, K → A, W → M, U → K…
+        Exemple : N → D, K → A, W → M, U → K…
       </div>
     </div>
   );
+}
+
+// ---- scoring: only hints affect points ----
+// Base 100, -20 per hint shown (1..3). Min 0.
+function computeScoreByHints(hintLevel: 0 | 1 | 2 | 3): number {
+  const base = 100;
+  const penaltyPerHint = 20;
+  const score = base - hintLevel * penaltyPerHint;
+  return Math.max(0, Math.min(100, score));
 }
 
 export default function BrissacEnigma() {
@@ -67,11 +80,45 @@ export default function BrissacEnigma() {
   // 0 = no hints, 1 = Caesar, 2 = shift 10, 3 = alphabet
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
 
+  // persisted result + key gating
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [score, setScore] = useState<number>(0);
+  const [codePart, setCodePart] = useState<string>("");
+  const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
+
+  // load saved + subscribe
+  useEffect(() => {
+    const saved = readGameResults();
+    setStatus(saved["brissac-enigma"].status);
+    setScore(saved["brissac-enigma"].score);
+    setCodePart(saved["brissac-enigma"].codePart);
+
+    return onGameResultsChange((r) => {
+      setStatus(r["brissac-enigma"].status);
+      setScore(r["brissac-enigma"].score);
+      setCodePart(r["brissac-enigma"].codePart);
+    });
+  }, []);
+
   function submit() {
     const candidate = normalize(value);
     const ok = VALID_ANSWERS.some((ans) => normalize(ans) === candidate);
     setState(ok ? "ok" : "ko");
     setTries((t) => t + 1);
+
+    if (ok) {
+      const pts = computeScoreByHints(hintLevel);
+      setScore(pts);
+      setSolvedThisSession(true);
+      reportGameResult("brissac-enigma", {
+        status: "completed",
+        score: pts,
+        codePart: codePartFor("brissac-enigma"), // 🔑 part du code pour ce jeu
+      });
+    } else {
+      // marquer échoué (optionnel)
+      reportGameResult("brissac-enigma", { status: "failed" });
+    }
   }
 
   function reset() {
@@ -79,6 +126,7 @@ export default function BrissacEnigma() {
     setState("idle");
     setTries(0);
     setHintLevel(0);
+    setSolvedThisSession(false);
   }
 
   function showHint() {
@@ -89,56 +137,51 @@ export default function BrissacEnigma() {
     <div style={styles.wrap}>
       <ThickBorderCloseButton />
       <div style={styles.card}>
-        <h1 style={{ margin: 0 }}>Enigma 4 — Brissac</h1>
+        <h1 style={{ margin: 0 }}>Énigme 4 — Brissac</h1>
         <p style={styles.subtitle}>
-          Find the hidden name: <strong>{CIPHERTEXT}</strong>
+          Trouve le nom caché : <strong>{CIPHERTEXT}</strong>
         </p>
 
         <div style={{ marginTop: 10 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
-            Your answer:
+            Ta réponse :
           </label>
           <input
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Type the hidden name…"
+            placeholder="Tape le nom décodé…"
             style={styles.input}
           />
         </div>
 
         <div style={styles.actions}>
           <button onClick={submit} style={styles.btnPrimary} disabled={!value.trim()}>
-            Validate
+            Valider
           </button>
           <button onClick={showHint} style={styles.btnGhost}>
-            {hintLevel === 0 ? "Hint" : hintLevel < 3 ? "Another hint" : "All hints shown"}
+            {hintLevel === 0 ? "Indice" : hintLevel < 3 ? "Un autre indice" : "Tous les indices affichés"}
           </button>
           <button onClick={reset} style={styles.btnGhost}>
-            Reset
+            Réinitialiser
           </button>
         </div>
 
-        {/* HINTS */}
+        {/* INDICES */}
         {hintLevel >= 1 && (
           <div style={styles.hint}>
-            🔎 <strong>Hint 1:</strong> It’s a <strong>Caesar cipher</strong>.
+            🔎 <strong>Indice 1 :</strong> C’est un <strong>chiffrement de César</strong>.
           </div>
         )}
         {hintLevel >= 2 && (
           <div style={styles.hint}>
-            🗝️ <strong>Hint 2:</strong> <strong>Shift by 10</strong>. To read the message, shift <strong>−10</strong>.
+            🗝️ <strong>Indice 2 :</strong> <strong>Décalage de 10</strong>. Lis le message avec <strong>−10</strong>.
           </div>
         )}
         {hintLevel >= 3 && (
           <div style={styles.hint}>
-            🔤 <strong>Hint 3:</strong> Use this alphabet to decode by hand:
-            <div style={{ marginTop: 8 }}>
-              {/* Option A: show your own image */}
-              {/* Image option removed as it's not being used */}
-              {/* Option B: inline diagram (no assets needed) */}
-              <CaesarAlphabetDiagram shiftBack={10} />
-            </div>
+            🔤 <strong>Indice 3 :</strong> Utilise cet alphabet pour décoder à la main :
+            <CaesarAlphabetDiagram shiftBack={10} />
           </div>
         )}
 
@@ -151,11 +194,33 @@ export default function BrissacEnigma() {
               color: state === "ok" ? "#14532d" : "#7f1d1d",
             }}
           >
-            {state === "ok" ? "✅ Correct!" : "❌ Not quite. Try again."}
+            {state === "ok" ? (
+              <>
+                <strong>✅ Correct !</strong>
+                <div style={{ marginTop: 6 }}>
+                  Score&nbsp;: <strong>{score}</strong>
+                  <span style={{ color: "#6b7280" }}> &nbsp; (pénalité indices : −{hintLevel * 20})</span>
+                </div>
+              </>
+            ) : (
+              "❌ Pas tout à fait. Essaie encore."
+            )}
           </div>
         )}
 
-        <p style={{ marginTop: 12, color: "#6b7280" }}>Attempts: {tries}</p>
+        {/* 🔑 Clé — visible seulement si résolu MAINTENANT dans cette session */}
+        {solvedThisSession && status === "completed" && codePart && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Clé</div>
+            <div style={{ padding: "8px 10px", border: "2px dashed black", borderRadius: 8 }}>
+              {codePart /* ce jeu ajoute sa part via codePartFor("brissac-enigma") */}
+            </div>
+          </div>
+        )}
+
+        <p style={{ marginTop: 12, color: "#6b7280" }}>
+          Tentatives : {tries} &nbsp;•&nbsp; Indices utilisés : {hintLevel}
+        </p>
       </div>
     </div>
   );
