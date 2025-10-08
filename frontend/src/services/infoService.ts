@@ -1,4 +1,4 @@
-// import { api } from "../config/axios.config";
+import { api } from "../config/axios.config";
 
 export type Info = {
     id: number;
@@ -7,6 +7,15 @@ export type Info = {
     description: string;
 }
 
-export default {
+export type Illustration = {
+    id: number;
+    infoId: number;
+    url: string;
+}
 
+export default {
+    async getIllustrations(infoId: number): Promise<Illustration[]> {
+        const res = await api.get<Illustration[]>(`/info/${infoId}/illustrations`);
+        return res.data;
+    }
 }
