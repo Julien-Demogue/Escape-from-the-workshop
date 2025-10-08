@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import ThickBorderBurgerMenu from "../components/ui/ThickBorderBurgerMenu";
 import QuestionMark from "../components/ui/QuestionMark";
 
@@ -33,8 +34,17 @@ const Dashboard: React.FC = () => {
   }, [showPopup]);
 
   useEffect(() => {
+    if (showPopup === false) {
+      localStorage.setItem('contextPopupShown', 'true');
+    }
+  }, [showPopup]);
+
+  // Sauvegarde locale des progrès
+  useEffect(() => {
     localStorage.setItem('gamesState', JSON.stringify(gamesState));
   }, [gamesState]);
+
+  const navigate = useNavigate();
 
   const handleGameClick = (game: keyof typeof INITIAL_GAMES_STATE) => {
     const currentLocation = window.location.pathname.slice(1);
@@ -44,7 +54,7 @@ const Dashboard: React.FC = () => {
         [game]: Math.random() > 0.5 ? 'completed' : 'failed' // À remplacer par la vraie logique de validation
       }));
     }
-    window.location.href = `/${game}`;
+    navigate(`/${game}`);
   };
 
   return (
@@ -53,9 +63,12 @@ const Dashboard: React.FC = () => {
       <ThickBorderBurgerMenu
         gameCode={gameCode}
         items={[
-          { label: 'Modifier les groupes', onClick: () => window.location.href = '/groupadmin' },
+          { label: 'Modifier les groupes', onClick: () => navigate('/groupadmin') },
           { label: 'Contexte', onClick: () => setShowPopup(true) },
-          { label: 'Déconnexion', onClick: () => window.location.href = '/' },
+          { label: 'Déconnexion', onClick: () => {
+            localStorage.removeItem('token');
+            navigate('/');
+          }},
         ]}
       />
 
