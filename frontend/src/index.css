@@ -1,1 +1,124 @@
 @import "tailwindcss";
+
+/* Polices magiques */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
+
+/* Variables CSS pour les animations magiques */
+:root {
+  --magical-glow: 0 0 20px rgba(251, 191, 36, 0.3);
+  --magical-glow-strong: 0 0 30px rgba(251, 191, 36, 0.6);
+}
+
+/* Styles globaux pour l'ambiance magique */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animations personnalisées */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+  }
+  50% { 
+    transform: translateY(-10px) rotate(5deg); 
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: scale(0.8) rotate(0deg); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.2) rotate(180deg); 
+  }
+}
+
+@keyframes magical-pulse {
+  0%, 100% { 
+    box-shadow: var(--magical-glow);
+    transform: scale(1); 
+  }
+  50% { 
+    box-shadow: var(--magical-glow-strong);
+    transform: scale(1.05); 
+  }
+}
+
+@keyframes river-flow {
+  0% { 
+    stroke-dasharray: 0, 100; 
+  }
+  50% { 
+    stroke-dasharray: 50, 50; 
+  }
+  100% { 
+    stroke-dasharray: 100, 0; 
+  }
+}
+
+/* Classes utilitaires magiques */
+.font-magical {
+  font-family: 'Cinzel Decorative', serif;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-magical-pulse {
+  animation: magical-pulse 2s ease-in-out infinite;
+}
+
+.animate-river-flow {
+  animation: river-flow 4s ease-in-out infinite;
+}
+
+/* Effet de parchemin */
+.parchment-texture {
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, transparent 50%);
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(120, 113, 108, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #d97706, #92400e);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #f59e0b, #d97706);
+}
+
+/* Effets de survol magiques */
+.magical-hover {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.magical-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--magical-glow-strong);
+}
