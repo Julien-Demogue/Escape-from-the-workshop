@@ -5,6 +5,7 @@ import partyRoutes from './party.routes';
 import groupRoutes from './group.routes';
 import infoRoutes from './info.routes';
 import challengeRoutes from './challenge.routes';
+import messageRoutes from './message.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/parties', partyRoutes);
 router.use('/groups', groupRoutes);
 router.use('/info', infoRoutes);
 router.use('/challenges', challengeRoutes);
+router.use('/messages', messageRoutes);
 
 export default router;

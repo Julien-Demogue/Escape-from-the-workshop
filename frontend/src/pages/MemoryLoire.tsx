@@ -26,7 +26,9 @@ export default function MemoryLoire() {
   const [won, setWon] = useState(false);
 
   useEffect(() => {
-    if (cards.length > 0 && cards.every((c) => c.matched)) setWon(true);
+    if (cards.length > 0 && cards.every((c) => c.matched)) {
+      setWon(true);
+    }
   }, [cards]);
 
   function resetGame() {
