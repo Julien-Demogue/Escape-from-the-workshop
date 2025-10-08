@@ -46,7 +46,7 @@ export class MessageService {
     });
 
     const groupUsers = await this.userService.getUsersFromGroup(Number(groupId));
-    
+
     const messagesConvertedInTypeMessage: Message[] = (await groupMessages).map(msg => ({
       id: msg.id,
       groupId: msg.groupId,
@@ -57,14 +57,5 @@ export class MessageService {
       sendDate: new Date(msg.sendDate)
     }));
     return messagesConvertedInTypeMessage;
-  }
-
-  async joinGroup(groupId: number, userId: number): Promise<GroupUser> {
-    return this.prisma.groupUser.create({
-      data: {
-        groupId,
-        userId,
-      },
-    });
   }
 }
