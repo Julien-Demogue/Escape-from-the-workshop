@@ -8,11 +8,16 @@ export const api = axios.create({
   },
 });
 
+import type { AxiosError, AxiosResponse } from "axios";
+
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => {
+    console.log("Response:", response);
+    return response;
+  },
+  (error: AxiosError) => {
     if (error.response && error.response.status === 401) {
-      window.location.href = "/login";
+      // window.location.href = "/login";
     }
     return Promise.reject(error);
   }

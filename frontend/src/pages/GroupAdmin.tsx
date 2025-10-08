@@ -495,7 +495,7 @@ const GroupAdmin: React.FC = () => {
         )}
 
         <div className="absolute bottom-8 left-8">
-          <Link to="/" style={{ textDecoration: 'none' }}>
+          <Link to="/dashboard" style={{ textDecoration: 'none' }}>
             <ThickBorderButton>
               Retour
             </ThickBorderButton>

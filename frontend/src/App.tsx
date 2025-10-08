@@ -12,11 +12,14 @@ import BrissacEnigma from "./pages/BrissacEnigma";
 import MemoryLoire from "./pages/MemoryLoire";
 import CourierLoire from "./pages/CourierLoire";
 import WebSocketTest from "./pages/WebsocketTest";
+import Register from "./pages/Register";
+import Login from './pages/Login';
 
 const App: React.FC = () => (
   <Routes>
-    <Route path="/" element={<Home />} />
-    
+    <Route path="/" element={<Login />} />
+    <Route path="/register" element={<Register />} />
+    <Route path="/home" element={<Home />} />
     <Route path="/puzzle" element={<Puzzle />} />
     <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
     <Route path="/chambord-enigma" element={<ChambordEnigma />} />
