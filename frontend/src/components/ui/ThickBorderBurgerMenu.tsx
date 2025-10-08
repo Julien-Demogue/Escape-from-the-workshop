@@ -21,11 +21,11 @@ const ThickBorderBurgerMenu: React.FC<ThickBorderBurgerMenuProps> = ({ items, ga
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed right-0 top-0 h-full">
+    <div className="fixed right-0 top-0 h-full z-50">
       {/* Bouton burger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="absolute right-8 top-8 w-10 h-10 flex flex-col justify-center items-center gap-1.5 border-2 border-black rounded-lg hover:bg-gray-100 z-50 bg-white"
+        className="fixed right-8 top-8 w-10 h-10 flex flex-col justify-center items-center gap-1.5 border-2 border-black rounded-lg hover:bg-gray-100 bg-white"
       >
         <div className={`w-6 h-0.5 bg-black transition-transform ${isOpen ? 'rotate-45 translate-y-2' : ''}`} />
         <div className={`w-6 h-0.5 bg-black transition-opacity ${isOpen ? 'opacity-0' : ''}`} />

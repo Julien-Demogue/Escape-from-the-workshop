@@ -1,22 +1,94 @@
-import { useMemo, useState } from "react";
-import chambordBlason from "../assets/images/blason/blason-chambord.png"; // opcional, cambia la ruta si quieres otra imagen
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import chambordBlason from "../assets/images/blason/blason-chambord.png";
+
+import {
+  codePartFor,
+  reportGameResult,
+  readGameResults,
+  onGameResultsChange,
+} from "../state/gameResults";
 
 /**
- * Enigma:
- * "Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
- * Combien de fois suis-je représenté ?"
+ * Énigme:
+ * « Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
+ * Combien de fois suis-je représenté ? »
  *
- * Emblème: la salamandre de François Ier.
- * Ajusta la respuesta si manejas otra cifra.
+ * Emblème : la salamandre de François Ier.
+ * Ajustez CORRECT_ANSWER si tenéis otra cifra.
  */
-const CORRECT_ANSWER = 300;      // <-- cámbiala si corresponde
-const ACCEPT_TOLERANCE = 0;      // 0 = exacto; pon, p.ej., 5 si aceptas ±5
+const CORRECT_ANSWER = 300; // <-- ajusta si corresponde
+const ACCEPT_TOLERANCE = 0; // p.ej. 5 para aceptar ±5
+
+// -------- Scoring by TIME ONLY --------
+// ≤ 1:00 -> 100
+// ≤ 2:00 -> 90
+// ≤ 3:00 -> 80
+// ≤ 5:00 -> 60
+// ≤ 7:00 -> 40
+// ≤ 10:00 -> 20
+//  > 10:00 -> 10 (mínimo)
+type TimeBand = { maxMs: number; score: number };
+const BANDS: TimeBand[] = [
+  { maxMs: 1 * 60 * 1000, score: 100 },
+  { maxMs: 2 * 60 * 1000, score: 90 },
+  { maxMs: 3 * 60 * 1000, score: 80 },
+  { maxMs: 5 * 60 * 1000, score: 60 },
+  { maxMs: 7 * 60 * 1000, score: 40 },
+  { maxMs: 10 * 60 * 1000, score: 20 },
+];
+const MIN_SCORE_AFTER = 10; // si tardan más de 10 min
+
+function scoreByTime(elapsedMs: number): number {
+  for (const b of BANDS) {
+    if (elapsedMs <= b.maxMs) return b.score;
+  }
+  return MIN_SCORE_AFTER;
+}
+
+function formatDuration(ms: number) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
 
 export default function ChambordEnigma() {
   const [value, setValue] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "correct" | "wrong">("idle");
   const [tries, setTries] = useState(0);
   const [showHint, setShowHint] = useState(false);
+
+  // Persisted result & session gate for the key
+  const [savedStatus, setSavedStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [savedScore, setSavedScore] = useState<number>(0);
+  const [codePart, setCodePart] = useState<string>("");
+  const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
+
+  // Timer
+  const startRef = useRef<number>(Date.now());
+  const [elapsed, setElapsed] = useState<number>(0);
+  const [running, setRunning] = useState<boolean>(true);
+
+  // Tick only while running
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 250);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  // Load saved + subscribe
+  useEffect(() => {
+    const saved = readGameResults();
+    setSavedStatus(saved["chambord-enigma"].status);
+    setSavedScore(saved["chambord-enigma"].score);
+    setCodePart(saved["chambord-enigma"].codePart);
+
+    return onGameResultsChange((r) => {
+      setSavedStatus(r["chambord-enigma"].status);
+      setSavedScore(r["chambord-enigma"].score);
+      setCodePart(r["chambord-enigma"].codePart);
+    });
+  }, []);
 
   const parsed = useMemo(() => {
     const n = Number(value);
@@ -25,11 +97,29 @@ export default function ChambordEnigma() {
 
   function check() {
     if (parsed === null) return;
-    const ok =
-      Math.abs(parsed - CORRECT_ANSWER) <= ACCEPT_TOLERANCE;
+    const ok = Math.abs(parsed - CORRECT_ANSWER) <= ACCEPT_TOLERANCE;
 
-    setStatus(ok ? "correct" : "wrong");
     setTries((t) => t + 1);
+    setStatus(ok ? "correct" : "wrong");
+
+    if (ok) {
+      const elapsedMs = Date.now() - startRef.current;
+      setRunning(false);
+      setElapsed(elapsedMs);
+      setSolvedThisSession(true);
+
+      const pts = scoreByTime(elapsedMs);
+      setSavedScore(pts);
+
+      reportGameResult("chambord-enigma", {
+        status: "completed",
+        score: pts,
+        codePart: codePartFor("chambord-enigma"),
+      });
+    } else {
+      // opcional: marcar fallido al validar mal
+      reportGameResult("chambord-enigma", { status: "failed" });
+    }
   }
 
   function reset() {
@@ -37,22 +127,23 @@ export default function ChambordEnigma() {
     setStatus("idle");
     setTries(0);
     setShowHint(false);
+    // restart session timing
+    startRef.current = Date.now();
+    setElapsed(0);
+    setRunning(true);
+    setSolvedThisSession(false);
   }
 
   return (
     <div style={styles.wrap}>
       <div style={styles.card}>
-        <h1 style={{ margin: 0 }}>Énigme 3</h1>
+        <h1 style={{ margin: 0 }}>Énigme — Salamandre de Chambord</h1>
         <p style={styles.subtitle}>
           « Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
           Combien de fois suis-je représenté ? »
         </p>
 
-        <img
-          src={chambordBlason}
-          alt="Blason de Chambord"
-          style={styles.image}
-        />
+        <img src={chambordBlason} alt="Blason de Chambord" style={styles.image} />
 
         <div style={{ marginTop: 8 }}>
           <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
@@ -66,6 +157,10 @@ export default function ChambordEnigma() {
             placeholder="Entrez un nombre…"
             style={styles.input}
           />
+        </div>
+
+        <div style={{ marginTop: 8, color: "#6b7280" }}>
+          Temps&nbsp;: <strong>{formatDuration(elapsed)}</strong>
         </div>
 
         <div style={styles.actions}>
@@ -97,7 +192,12 @@ export default function ChambordEnigma() {
             }}
           >
             {status === "correct" ? (
-              <strong>✅ Bravo ! C’est la bonne réponse.</strong>
+              <>
+                <strong>✅ Bravo ! C’est la bonne réponse.</strong>
+                <div style={{ marginTop: 6 }}>
+                  Score&nbsp;: <strong>{savedScore}</strong> — Temps&nbsp;: <strong>{formatDuration(elapsed)}</strong>
+                </div>
+              </>
             ) : (
               <>
                 <strong>❌ Ce n’est pas la bonne réponse.</strong>
@@ -106,6 +206,16 @@ export default function ChambordEnigma() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Clé: visible SEULEMENT si resuelto AHORA en esta sesión */}
+        {solvedThisSession && savedStatus === "completed" && codePart && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Clé</div>
+            <div style={{ padding: "8px 10px", border: "2px dashed black", borderRadius: 8 }}>
+              {codePart /* ce jeu apporte son mot via codePartFor("chambord-enigma") */}
+            </div>
           </div>
         )}
 
