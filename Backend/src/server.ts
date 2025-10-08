@@ -5,65 +5,71 @@ import cors from 'cors';
 import routes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger';
-import client from 'prom-client';
 import { MessageService } from './services/message.service';
 import { Message } from './generated/prisma';
+import { metricsMiddleware, metricsHandler } from './metrics';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const FRONT_URL = process.env.FRONT_URL || 'http://localhost:5173';
 
-// Créer le serveur HTTP pour Socket.IO
+// Create HTTP server
 const httpServer = createServer(app);
 
-// Configuration Socket.IO avec CORS
+// Socket.IO config with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173", // URL de votre frontend
+    origin: FRONT_URL,
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-// CORS pour Express (ajouté pour éviter les problèmes de CORS)
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: FRONT_URL,
   credentials: true
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Use metrics middleware early so it captures all requests
+app.use(metricsMiddleware);
+
 app.use('/swagger', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(routes);
+
+app.get('/metrics', metricsHandler);
 
 const messageService = new MessageService();
 
 io.on('connection', (socket) => {
-  console.log('🔌 Utilisateur connecté:', socket.id);
+  console.log('🔌 User connected:', socket.id);
 
   socket.on('join-group', async (groupId: string) => {
     socket.join(groupId);
     try {
       const groupMessages = await messageService.getMessagesByGroupId(Number(groupId));
-      console.log(groupMessages)
+      console.log(groupMessages);
       socket.emit('message-history', groupMessages);
 
       socket.to(groupId).emit('user-joined', {
-        message: `Un utilisateur a rejoint le groupe`,
+        message: `A user has joined the group`,
         socketId: socket.id
       });
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des messages:', error);
+      console.error('❌ Error fetching messages:', error);
 
-      // Envoyer une erreur au client
+      // Send an error to the client
       socket.emit('error', {
-        message: 'Impossible de récupérer l\'historique des messages',
+        message: 'Unable to load message history',
         type: 'HISTORY_LOAD_ERROR'
       });
     }
   });
 
   socket.on('send-message', async (data) => {
-    console.log('💬 Message reçu:', data);
+    console.log('💬 Message received:', data);
 
     try {
       const sendMessage: Message = await messageService.sendMessage({
@@ -81,11 +87,11 @@ io.on('connection', (socket) => {
         socketId: socket.id
       });
     } catch (error) {
-      console.error('❌ Erreur lors de l\'envoi du message:', error);
+      console.error('❌ Error sending message:', error);
 
-      // Envoyer une erreur au client
+      // Send an error to the client
       socket.emit('error', {
-        message: 'Impossible d\'envoyer le message',
+        message: 'Unable to send message',
         type: 'MESSAGE_SEND_ERROR'
       });
     }
@@ -93,84 +99,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Utilisateur déconnecté:', socket.id);
+    console.log('❌ User disconnected:', socket.id);
   });
 });
 
-// Créer un registre pour Prometheus
-const register = new client.Registry();
-
-// Activer les métriques par défaut (RAM, CPU, etc.)
-client.collectDefaultMetrics({ register });
-
-// Exemple de compteur personnalisé
-const httpRequestCounter = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Nombre total de requêtes HTTP',
-  labelNames: ['method', 'route', 'status'] as const,
-});
-
-const httpRequestDuration = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Durée des requêtes HTTP en secondes',
-  labelNames: ['method', 'route', 'status'] as const,
-  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5], // en secondes
-});
-register.registerMetric(httpRequestDuration);
-
-const httpErrorCounter = new client.Counter({
-  name: 'http_errors_total',
-  help: 'Nombre total derreurs HTTP',
-  labelNames: ['method', 'route', 'status'] as const,
-});
-register.registerMetric(httpErrorCounter);
-
-// Enregistrer le compteur dans le registre
-register.registerMetric(httpRequestCounter);
-
-// Middleware de mesure + comptage
-app.use((req: Request, res, next) => {
-  const start = process.hrtime(); // temps de départ en haute résolution
-
-  res.on('finish', () => {
-    const delta = process.hrtime(start);
-    const durationInSeconds = delta[0] + delta[1] / 1e9;
-
-    const labels = {
-      method: req.method,
-      route: req.route?.path || req.path,
-      status: res.statusCode.toString(),
-    };
-
-    httpRequestCounter.inc(labels);
-    httpRequestDuration.observe(labels, durationInSeconds);
-
-    // Si erreur (code 4xx ou 5xx), on l'enregistre
-    if (res.statusCode >= 400) {
-      httpErrorCounter.inc(labels);
-    }
-  });
-
-  next();
-});
-
-// Route pour exposer les métriques
-app.get('/metrics', async (req: Request, res: Response) => {
-  try {
-    res.set('Content-Type', register.contentType);
-    res.end(await register.metrics());
-  } catch (err) {
-    res.status(500).end((err as Error).message);
-  }
-});
-
-// IMPORTANT : Utiliser httpServer au lieu d'app.listen()
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`🔌 Socket.IO configuré et prêt`);
-  console.log(`📊 Métriques Prometheus disponibles sur /metrics`);
-  console.log(`📖 Documentation Swagger disponible sur /swagger`);
+  console.log(`🚀 Server started on port ${PORT}`);
+  console.log(`🔌 Socket.IO configured and ready`);
+  console.log(`📊 Prometheus metrics available on /metrics`);
+  console.log(`📖 Swagger documentation available on /swagger`);
 });
 
-// Exporter io pour l'utiliser ailleurs si nécessaire
 export { io };
