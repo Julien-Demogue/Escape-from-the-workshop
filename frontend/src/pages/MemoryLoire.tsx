@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildMemoryDeck, type DeckCard } from "../utils/buildMemoryDeck";
+import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 
 type PlayCard = DeckCard & { revealed: boolean; matched: boolean };
 
@@ -86,7 +87,8 @@ export default function MemoryLoire() {
   }
 
   return (
-    <div style={styles.wrap}>
+    <div style={{ margin: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <ThickBorderCloseButton />
       <div style={styles.header}>
         <h1 style={{ margin: 0 }}>Loire Memory — {PAIRS} pairs</h1>
         <div style={styles.meta}>

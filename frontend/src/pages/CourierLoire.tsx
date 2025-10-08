@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 
 /** ---- Data ---- */
 type Place = { id: string; name: string; lat: number; lon: number; img?: string };
@@ -111,7 +112,7 @@ export default function CourierLoire() {
   function nearestNeighbor() {
     const [start, ...rest] = route;
     const ordered = [start];
-    let pool = rest.slice();
+    const pool = rest.slice();
     while (pool.length) {
       const last = ordered[ordered.length - 1];
       let kBest = 0, dBest = Infinity;
@@ -127,6 +128,7 @@ export default function CourierLoire() {
 
   return (
     <div style={styles.shell}>
+      <ThickBorderCloseButton />
       {/* Columna izquierda: info arriba, mapa abajo */}
       <div style={styles.leftCol}>
         <div style={styles.panel}>
