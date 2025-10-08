@@ -145,10 +145,24 @@ const Jigsaw: React.FC<JigsawProps> = ({
       className={className}
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 12, display: 'flex', gap: '12px', alignItems: 'center' }}>
         <span style={{ fontSize: 14, opacity: 0.8 }}>
           Drag or tap two tiles to swap
         </span>
+        <button
+          onClick={reshuffle}
+          style={{
+            padding: '4px 10px',
+            borderRadius: '4px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          Shuffle
+        </button>
       </div>
 
       {/* Outer frame: rounded corners only here */}

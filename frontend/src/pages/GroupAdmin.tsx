@@ -80,7 +80,6 @@ const GroupAdmin: React.FC = () => {
     if (targetGroup && (targetGroup.members?.length || 0) >= 3) {
       setReplacementMode(true);
       setTargetGroupId(toGroupId);
-      setErrorMessage("Sélectionnez un joueur à remplacer dans ce groupe");
       return;
     }
 
@@ -106,9 +105,11 @@ const GroupAdmin: React.FC = () => {
         return group;
       });
     });
+    // Réinitialiser tous les états
     setMovingParticipant(null);
     setReplacementMode(false);
     setErrorMessage(null);
+    setShowMoveModal(false);
   };
 
   const handleReplacePlayer = (groupId: number, playerToReplace: Participant) => {
@@ -116,15 +117,17 @@ const GroupAdmin: React.FC = () => {
 
     setGroups(currentGroups => {
       return currentGroups.map(group => {
-        // Retirer le joueur du groupe source
+        // Groupe source : retirer le joueur qui se déplace et ajouter le joueur remplacé
         if (group.id === movingParticipant.fromGroupId) {
-          const updatedMembers = group.members?.filter(m => m.id !== movingParticipant.participant.id);
+          const filteredMembers = group.members?.filter(m => m.id !== movingParticipant.participant.id) || [];
+          const updatedMembers = [...filteredMembers, playerToReplace];
           return {
             ...group,
             members: updatedMembers,
-            participants: (updatedMembers?.length || 0)
+            participants: updatedMembers.length
           };
         }
+        // Groupe cible : remplacer le joueur
         if (group.id === groupId) {
           const updatedMembers = group.members?.map(m => 
             m.id === playerToReplace.id ? movingParticipant.participant : m
@@ -138,10 +141,12 @@ const GroupAdmin: React.FC = () => {
         return group;
       });
     });
+    // Réinitialiser tous les états
     setMovingParticipant(null);
     setReplacementMode(false);
     setTargetGroupId(null);
     setErrorMessage(null);
+    setShowMoveModal(false);
   };
 
 
@@ -440,7 +445,10 @@ const GroupAdmin: React.FC = () => {
                                 className="w-full flex items-center gap-2 justify-between"
                               >
                                 <span>{player.name}</span>
-                                <ThickBorderCircle size={24} />
+                                <ThickBorderCircle 
+                                  size={24} 
+                                  style={{ backgroundColor: 'white', cursor: 'pointer' }}
+                                />
                               </ThickBorderButton>
                             ))}
                         </div>
@@ -468,10 +476,12 @@ const GroupAdmin: React.FC = () => {
                                 onClick={() => handleMoveParticipant(group.id)}
                                 className="w-full"
                               >
-                                {group.name}
-                                {group.members && group.members.length >= 3 ? 
-                                  " (Plein - Cliquez pour remplacer)" : 
-                                  ` (${group.members?.length || 0}/3)`}
+                                <span>{group.name}</span>
+                                <span className={group.members && group.members.length >= 3 ? "text-red-600" : ""}>
+                                  {group.members && group.members.length >= 3 ? 
+                                    " (Plein - Cliquez pour remplacer)" : 
+                                    ` (${group.members?.length || 0}/3)`}
+                                </span>
                               </ThickBorderButton>
                             ))}
                         </div>
