@@ -39,7 +39,7 @@ const MagicalHome = () => {
   };
 
   const handleJoinQuest = async () => {
-    const code = gameCode.trim();
+    const code = gameCode.trim().toUpperCase();
     if (!code) return;
     try {
       setJoining(true);
