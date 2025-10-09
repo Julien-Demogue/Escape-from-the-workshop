@@ -77,4 +77,33 @@ router.get('/:id', (req, res) => userController.getUserById(req, res));
  */
 router.get('/group/:groupId', (req, res) => userController.getUsersByGroupId(req, res));
 
+/**
+ * @openapi
+ * /users/party/{partyId}/group:
+ *   get:
+ *     summary: Get the group in a party that contains the current user (may be null)
+ *     tags:
+ *       - users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: partyId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: The group containing the user, or null if the user is in no group
+ *       400:
+ *         description: Invalid party id
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Party not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/party/:partyId/group', (req, res) => userController.getUserGroupInParty(req, res));
+
 export default router;
