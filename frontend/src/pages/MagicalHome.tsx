@@ -8,6 +8,7 @@ import MagicalCard from "../components/ui/MagicalCard";
 const MagicalHome = () => {
   const [gameCode, setGameCode] = useState('');
   const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
   const navigate = useNavigate();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -34,6 +35,26 @@ const MagicalHome = () => {
       console.error("Erreur création de la quête :", err);
       setCreating(false);
       showToast("Échec de la création de la quête. Réessayez plus tard.");
+    }
+  };
+
+  const handleJoinQuest = async () => {
+    const code = gameCode.trim();
+    if (!code) return;
+    try {
+      setJoining(true);
+      const party = await partyService.getByCode(code);
+      if (!party) {
+        showToast("Quête introuvable pour ce code.");
+        setJoining(false);
+        return;
+      }
+      // Naviguer vers la page de la partie (joueur participant)
+      navigate(`/group/${party.id}`);
+    } catch (err) {
+      console.error("Erreur lors de la recherche de la quête :", err);
+      showToast("Impossible de rejoindre la quête pour le moment. Réessayez plus tard.");
+      setJoining(false);
     }
   };
 
@@ -127,11 +148,12 @@ const MagicalHome = () => {
                   <MagicalButton
                     variant="primary"
                     className="w-full py-4 text-lg"
-                    disabled={!gameCode.trim()}
+                    onClick={handleJoinQuest}
+                    disabled={!gameCode.trim() || joining}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <span>⚔️</span>
-                      Rejoindre la Quête
+                      {joining ? "Connexion..." : "Rejoindre la Quête"}
                     </span>
                   </MagicalButton>
                 </div>
