@@ -1,0 +1,280 @@
+.memory-loire {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1c2c 0%, #2a2c4c 100%);
+  display: flex;
+  flex-direction: column;
+  color: #fcd34d;
+  align-items: center;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.memory-stars {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.memory-star {
+  position: absolute;
+  width: 0.25rem;
+  height: 0.25rem;
+  background-color: #fef08a;
+  border-radius: 9999px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.memory-title {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: #fcd34d;
+  font-family: serif;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.memory-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  color: #fde68a;
+  font-family: serif;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.memory-button {
+  background-image: linear-gradient(to right, #f59e0b, #b45309);
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.memory-button:hover {
+  background-image: linear-gradient(to right, #d97706, #92400e);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.3);
+}
+
+.memory-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  padding: 1.5rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.memory-card-item {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .memory-grid {
+    grid-template-columns: repeat(6, minmax(100px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .memory-grid {
+    grid-template-columns: repeat(8, minmax(90px, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+.memory-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.memory-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+.memory-card.flipped .memory-card-inner {
+  transform: rotateY(180deg);
+}
+
+.memory-card-front,
+.memory-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(254, 243, 199, 0.3);
+  transition: all 0.3s ease;
+}
+
+.memory-card-front {
+  background: linear-gradient(135deg, #292524, #78350f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: rgba(254, 243, 199, 0.6);
+  transform: rotateY(0deg);
+}
+
+.memory-card-back {
+  background-color: white;
+  transform: rotateY(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.memory-card:hover .memory-card-front,
+.memory-card:hover .memory-card-back {
+  border-color: rgba(253, 230, 138, 0.6);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Effet de brillance sur les cartes */
+.memory-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(253, 230, 138, 0.2), transparent 70%);
+  transform: scale(0);
+  transition: transform 0.3s ease-out;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.memory-card:hover::before {
+  transform: scale(1);
+}
+
+/* Effets de survol */
+.memory-card-wrapper:hover .memory-card-front {
+  box-shadow: 
+    0 0 15px rgba(253, 230, 138, 0.3),
+    inset 0 0 20px rgba(253, 230, 138, 0.2);
+  border-color: rgba(253, 230, 138, 0.5);
+}
+
+.memory-card-wrapper:hover .memory-card-back {
+  box-shadow: 
+    0 0 20px rgba(245, 158, 11, 0.4),
+    inset 0 0 30px rgba(254, 243, 199, 0.2);
+}
+
+/* Animation de match */
+@keyframes matchFound {
+  0% { transform: scale(1) rotateY(180deg); }
+  50% { transform: scale(1.1) rotateY(180deg); }
+  100% { transform: scale(1) rotateY(180deg); }
+}
+
+.memory-card-item.matched {
+  animation: matchFound 0.6s ease-out;
+}
+
+/* Animation particules lors du match */
+@keyframes particleOut {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+}
+
+.memory-card-wrapper.matched::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(253, 230, 138, 0.6) 0%, transparent 70%);
+  z-index: 1;
+  animation: particleOut 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+.memory-status {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(253, 230, 138, 0.3);
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  color: #78350f;
+  font-family: serif;
+}
+
+/* Animations */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(253, 230, 138, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(253, 230, 138, 0.5); }
+}
+
+@keyframes cardReveal {
+  0% { 
+    opacity: 0;
+    transform: rotateY(180deg) scale(0.8);
+  }
+  100% { 
+    opacity: 1;
+    transform: rotateY(180deg) scale(1);
+  }
+}
+
+/* Animation de non-correspondance */
+@keyframes noMatch {
+  0%, 100% { transform: rotateY(180deg); }
+  20%, 60% { transform: rotateY(180deg) translateX(-5px); }
+  40%, 80% { transform: rotateY(180deg) translateX(5px); }
+}
+
+.memory-card-item.no-match {
+  animation: noMatch 0.4s ease-in-out;
+}
+
+/* Effet de lumière magique */
+.memory-card-wrapper::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(253, 230, 138, 0.2) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.memory-card-wrapper:hover::after {
+  opacity: 1;
+}
