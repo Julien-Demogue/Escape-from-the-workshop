@@ -50,7 +50,7 @@ router.get('/:id', (req, res) => userController.getUserById(req, res));
 
 /**
  * @openapi
- * /groups/{groupId}/users:
+ * /users/group/{groupId}:
  *   get:
  *     summary: Get users of a specific group
  *     tags:
@@ -75,6 +75,6 @@ router.get('/:id', (req, res) => userController.getUserById(req, res));
  *       500:
  *         description: Internal Server Error
  */
-router.get('/groups/:groupId/users', (req, res) => userController.getUsersByGroupId(req, res));
+router.get('/group/:groupId', (req, res) => userController.getUsersByGroupId(req, res));
 
 export default router;
