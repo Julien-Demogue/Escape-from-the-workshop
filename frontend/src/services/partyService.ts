@@ -29,8 +29,8 @@ export default {
         return res.data;
     },
 
-    async startParty(id: number, endDate: string): Promise<Party> {
-        const res = await api.post<Party>(`/parties/${id}/start`, { endDate });
+    async startParty(id: number, endTime: number): Promise<Party> {
+        const res = await api.post<Party>(`/parties/${id}/start`, { endTime });
         return res.data;
     }
 }

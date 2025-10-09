@@ -37,6 +37,26 @@ const MagicalHome = () => {
     }
   };
 
+  const handleJoinQuest = async () => {
+    const code = gameCode.trim().toUpperCase();
+    if (!code) return;
+    try {
+      setJoining(true);
+      const party = await partyService.getByCode(code);
+      if (!party) {
+        showToast("Quête introuvable pour ce code.");
+        setJoining(false);
+        return;
+      }
+      // Naviguer vers la page de la partie (joueur participant)
+      navigate(`/group/${party.id}`);
+    } catch (err) {
+      console.error("Erreur lors de la recherche de la quête :", err);
+      showToast("Impossible de rejoindre la quête pour le moment. Réessayez plus tard.");
+      setJoining(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-800 via-amber-900 to-stone-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Fond d'étoiles magiques */}

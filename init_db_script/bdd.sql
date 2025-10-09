@@ -12,6 +12,7 @@ SLAVE MONITOR,
 SELECT ON *.* TO 'exporter' @'%';
 
 FLUSH PRIVILEGES;
+SET GLOBAL time_zone = 'Europe/Paris';
 
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,7 +48,7 @@ CREATE table if not EXISTS parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     adminUserId INT NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
-    endTime TIMESTAMP NULL,
+    endTime TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 HOUR),
     FOREIGN KEY (adminUserId) REFERENCES users (id)
 );
 

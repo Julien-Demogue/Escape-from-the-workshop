@@ -1,5 +1,9 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import partyService from "../services/partyService";
+import groupService from "../services/groupService";
 import ThickBorderCard from "../components/ui/ThickBorderCard";
 import ThickBorderButton from "../components/ui/ThickBorderButton";
 import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
@@ -12,7 +16,8 @@ interface Participant {
   name: string;
 }
 
-interface Group {
+// Rename local Group to avoid collision with service type
+interface AdminGroup {
   id: number;
   participants: number;
   name?: string;
@@ -24,17 +29,99 @@ interface MovingParticipant {
   fromGroupId: number;
 }
 
+// --- Ajout : caches de promesses pour éviter les double-requests (StrictMode dev double-mount) ---
+const partyFetchCache = new Map<number, Promise<any>>();
+const groupsFetchCache = new Map<number, Promise<any>>();
+// --- fin ajout ---
+
 const GroupAdmin: React.FC = () => {
   const [numberOfGroups, setNumberOfGroups] = useState("1");
   const [participantsPerGroup, setParticipantsPerGroup] = useState("1");
   const [isPlayer, setIsPlayer] = useState(false);
-  const [groups, setGroups] = useState<Group[]>([]);
+  // use AdminGroup type
+  const [groups, setGroups] = useState<AdminGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [movingParticipant, setMovingParticipant] = useState<MovingParticipant | null>(null);
   const [replacementMode, setReplacementMode] = useState(false);
   const [targetGroupId, setTargetGroupId] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [partyCode, setPartyCode] = useState<string | null>(null);
+  const [loadingParty, setLoadingParty] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [creatingGroups, setCreatingGroups] = useState(false);
+
+  // Nouvel état pour démarrage de la partie
+  const [startingParty, setStartingParty] = useState(false);
+
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchParty = async () => {
+      if (!id) return;
+      const partyId = parseInt(id, 10);
+      if (isNaN(partyId)) return;
+
+      try {
+        setLoadingParty(true);
+
+        // Si une promesse pour cette partyId est déjà en cours, on la réutilise
+        let promise = partyFetchCache.get(partyId);
+        if (!promise) {
+          promise = partyService.getById(partyId);
+          partyFetchCache.set(partyId, promise);
+          // on supprime la promesse du cache une fois terminée (success ou erreur)
+          promise.finally(() => partyFetchCache.delete(partyId));
+        }
+
+        const party = await promise;
+        setPartyCode(party?.code ?? null);
+      } catch (err) {
+        console.log(err);
+        setErrorMessage("Impossible de récupérer le code de la partie.");
+      } finally {
+        setLoadingParty(false);
+      }
+    };
+    fetchParty();
+  }, [id]);
+
+  // Charger les groupes depuis l'API quand l'id change
+  useEffect(() => {
+    const loadGroups = async () => {
+      if (!id) return;
+      const partyId = parseInt(id, 10);
+      if (isNaN(partyId)) return;
+
+      try {
+        setLoadingGroups(true);
+
+        // Réutiliser la promesse si une requête identique est déjà en cours
+        let promise = groupsFetchCache.get(partyId);
+        if (!promise) {
+          promise = groupService.getByPartyId(partyId);
+          groupsFetchCache.set(partyId, promise);
+          promise.finally(() => groupsFetchCache.delete(partyId));
+        }
+
+        const svcGroups = await promise;
+        const mapped = svcGroups.map((g: any, idx: number) => ({
+          id: g.id,
+          participants: g.members?.length ?? 0,
+          name: g.name ?? `Groupe ${idx + 1}`,
+          members: g.members ?? []
+        })) as AdminGroup[];
+        setGroups(mapped);
+      } catch (err) {
+        console.error(err);
+        setErrorMessage("Impossible de récupérer les groupes depuis le serveur.");
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+    loadGroups();
+  }, [id]);
 
   const handleMoveClick = (participant: Participant, fromGroupId: number) => {
     setMovingParticipant({ participant, fromGroupId });
@@ -59,15 +146,13 @@ const GroupAdmin: React.FC = () => {
     });
   };
 
-
-
   const handleMoveParticipant = (toGroupId: number) => {
     if (!movingParticipant) return;
 
     // Vérifier si le joueur existe déjà dans un autre groupe
-    const isPlayerDuplicate = groups.some(group => 
-      group.id !== movingParticipant.fromGroupId && 
-      group.id !== toGroupId && 
+    const isPlayerDuplicate = groups.some(group =>
+      group.id !== movingParticipant.fromGroupId &&
+      group.id !== toGroupId &&
       group.members?.some(m => m.id === movingParticipant.participant.id)
     );
 
@@ -129,7 +214,7 @@ const GroupAdmin: React.FC = () => {
         }
         // Groupe cible : remplacer le joueur
         if (group.id === groupId) {
-          const updatedMembers = group.members?.map(m => 
+          const updatedMembers = group.members?.map(m =>
             m.id === playerToReplace.id ? movingParticipant.participant : m
           ) || [];
           return {
@@ -148,8 +233,6 @@ const GroupAdmin: React.FC = () => {
     setErrorMessage(null);
     setShowMoveModal(false);
   };
-
-
 
   const handleNumberOfGroupsChange = (value: string) => {
     const number = parseInt(value);
@@ -180,24 +263,56 @@ const GroupAdmin: React.FC = () => {
       }
     }
   };
-  const gameCode = "ABCXYZ";
+
+  // Ajout : handler pour démarrer la partie (endDate = now + 1h)
+  const handleStartParty = async () => {
+    if (!id) {
+      setErrorMessage("Aucun identifiant de partie fourni.");
+      return;
+    }
+    const partyId = parseInt(id, 10);
+    if (isNaN(partyId)) {
+      setErrorMessage("Identifiant de partie invalide.");
+      return;
+    }
+
+    try {
+      setStartingParty(true);
+      const endDate = new Date();
+      endDate.setHours(endDate.getHours() + 1);
+      // timestamp in milliseconds
+      const endDateTimestamp = endDate.getTime();
+      await partyService.startParty(partyId, endDateTimestamp);
+      // rediriger vers le dashboard après démarrage
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Erreur lors du démarrage de la partie :", err);
+      setErrorMessage("Impossible de démarrer la quête. Réessayez.");
+    } finally {
+      setStartingParty(false);
+    }
+  };
 
   return (
     <div className="relative w-full min-h-screen p-8 overflow-y-auto">
       <div className="fixed top-8 right-8 flex flex-col items-center gap-4 z-20">
         <ThickBorderCard>
-          {gameCode}
+          {loadingParty ? "Chargement..." : (partyCode ?? "—")}
         </ThickBorderCard>
-        <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-          <ThickBorderButton>
-            Démarrer
-          </ThickBorderButton>
-        </Link>
+
+        {/* Remplacé : Link vers dashboard -> bouton qui démarre la partie */}
+        <ThickBorderButton
+          onClick={handleStartParty}
+          disabled={startingParty}
+          className="flex items-center justify-center"
+        >
+          {startingParty ? "Démarrage..." : "Démarrer"}
+        </ThickBorderButton>
       </div>
 
       <div className="flex flex-col items-center justify-center h-full gap-8 max-w-md mx-auto">
         <p className="text-sm text-gray-500">Maximum de 45 participants</p>
-        
+
         {errorMessage && (
           <ThickBorderError
             message={errorMessage}
@@ -205,7 +320,7 @@ const GroupAdmin: React.FC = () => {
             className="w-full animate-fadeIn"
           />
         )}
-        
+
         <div className="w-full space-y-6">
           <div className="flex flex-col gap-2">
             <label htmlFor="numGroups">Nombre de groupes</label>
@@ -233,18 +348,18 @@ const GroupAdmin: React.FC = () => {
             />
           </div>
 
-          <ThickBorderCheckbox
+          {/* <ThickBorderCheckbox
             label="Je fais partie des joueurs"
             checked={isPlayer}
             onChange={(e) => setIsPlayer(e.target.checked)}
-          />
+          /> */}
 
-          <ThickBorderButton 
+          <ThickBorderButton
             className="w-full"
-            onClick={() => {
+            onClick={async () => {
               const numGroups = parseInt(numberOfGroups || "0");
               const numParticipants = parseInt(participantsPerGroup || "0");
-              
+
               if (numberOfGroups === "" || participantsPerGroup === "") {
                 setErrorMessage("Veuillez remplir tous les champs");
                 return;
@@ -266,34 +381,42 @@ const GroupAdmin: React.FC = () => {
                 return;
               }
 
-              // Créer un tableau de tous les joueurs avec des IDs uniques
-              const allParticipants = Array.from(
-                { length: totalParticipants },
-                (_, i) => ({
-                  id: i + 1,
-                  name: `Joueur ${i + 1}`
-                })
-              );
+              // Utiliser le service de création de groupes côté serveur
+              if (!id) {
+                setErrorMessage("Aucun identifiant de partie fourni.");
+                return;
+              }
+              const partyId = parseInt(id, 10);
+              if (isNaN(partyId)) {
+                setErrorMessage("Identifiant de partie invalide.");
+                return;
+              }
 
-              // Répartir les joueurs dans les groupes
-              const newGroups = Array.from({ length: numGroups }, (_, groupIndex) => {
-                const startIndex = groupIndex * numParticipants;
-                const groupMembers = allParticipants.slice(startIndex, startIndex + numParticipants);
-                
-                return {
-                  id: groupIndex + 1,
-                  participants: numParticipants,
-                  name: `Groupe ${groupIndex + 1}`,
-                  members: groupMembers
-                };
-              });
-
-              setGroups(newGroups);
-              setSelectedGroupId(null);
-              setErrorMessage(null);
+              try {
+                setCreatingGroups(true);
+                // createGroups crée le nombre de groupes demandés côté serveur
+                await groupService.createGroups(partyId, numGroups);
+                // recharger les groupes
+                const svcGroups = await groupService.getByPartyId(partyId);
+                const mapped = svcGroups.map((g, idx) => ({
+                  id: g.id,
+                  participants: (g as any).members?.length ?? numParticipants,
+                  name: g.name ?? `Groupe ${idx + 1}`,
+                  members: (g as any).members ?? []
+                })) as AdminGroup[];
+                setGroups(mapped);
+                setSelectedGroupId(null);
+                setErrorMessage(null);
+              } catch (err) {
+                console.error(err);
+                setErrorMessage("Impossible de créer les groupes via le serveur.");
+              } finally {
+                setCreatingGroups(false);
+              }
             }}
+            disabled={creatingGroups}
           >
-            Créer aléatoirement les groupes
+            {creatingGroups ? "Création..." : "Créer aléatoirement les groupes"}
           </ThickBorderButton>
         </div>
 
@@ -303,11 +426,10 @@ const GroupAdmin: React.FC = () => {
             {/* Grille des groupes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
               {groups.map((group) => (
-                <div 
-                  key={group.id} 
-                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 cursor-pointer transition-colors ${
-                    selectedGroupId === group.id ? 'bg-gray-100' : ''
-                  }`}
+                <div
+                  key={group.id}
+                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 cursor-pointer transition-colors ${selectedGroupId === group.id ? 'bg-gray-100' : ''
+                    }`}
                   onClick={() => setSelectedGroupId(group.id)}
                 >
                   <div className="text-lg font-semibold text-center">
@@ -323,7 +445,7 @@ const GroupAdmin: React.FC = () => {
                           handleMoveClick(member, group.id);
                         }}
                       >
-                        <ThickBorderCircle 
+                        <ThickBorderCircle
                           size={28}
                           style={{ backgroundColor: 'white', cursor: 'pointer' }}
                           title={member.name}
@@ -338,13 +460,13 @@ const GroupAdmin: React.FC = () => {
             {/* Détails du groupe */}
             {selectedGroupId && (
               <>
-                <div 
-                  className="fixed inset-0" 
+                <div
+                  className="fixed inset-0"
                   onClick={() => setSelectedGroupId(null)}
                 />
-                <div 
+                <div
                   className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-10 overflow-y-auto"
-                  style={{ 
+                  style={{
                     borderTopLeftRadius: '18px',
                     borderBottomLeftRadius: '18px',
                     borderRight: 'none'
@@ -355,7 +477,7 @@ const GroupAdmin: React.FC = () => {
                       <h3 className="text-xl font-bold">
                         {groups.find(g => g.id === selectedGroupId)?.name}
                       </h3>
-                      <button 
+                      <button
                         onClick={() => {
                           setSelectedGroupId(null);
                           setReplacementMode(false);
@@ -370,10 +492,10 @@ const GroupAdmin: React.FC = () => {
                       {groups.find(g => g.id === selectedGroupId)?.members?.map(member => (
                         <div key={member.id} className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <ThickBorderCircle 
+                            <ThickBorderCircle
                               size={20}
-                              style={{ 
-                                backgroundColor: 
+                              style={{
+                                backgroundColor:
                                   replacementMode ? 'rgba(255, 255, 255, 0.7)' : 'white',
                                 cursor: replacementMode ? 'pointer' : 'default'
                               }}
@@ -414,8 +536,8 @@ const GroupAdmin: React.FC = () => {
             {/* Modal de déplacement */}
             {showMoveModal && movingParticipant && (
               <>
-                <div 
-                  className="fixed inset-0 bg-black bg-opacity-50" 
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-50"
                   onClick={() => {
                     setShowMoveModal(false);
                     setMovingParticipant(null);
@@ -423,7 +545,7 @@ const GroupAdmin: React.FC = () => {
                     setTargetGroupId(null);
                   }}
                 />
-                <div 
+                <div
                   className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 bg-white border-2 border-black p-6 z-20 rounded-lg"
                 >
                   <div className="flex flex-col gap-4">
@@ -445,8 +567,8 @@ const GroupAdmin: React.FC = () => {
                                 className="w-full flex items-center gap-2 justify-between"
                               >
                                 <span>{player.name}</span>
-                                <ThickBorderCircle 
-                                  size={24} 
+                                <ThickBorderCircle
+                                  size={24}
                                   style={{ backgroundColor: 'white', cursor: 'pointer' }}
                                 />
                               </ThickBorderButton>
@@ -478,8 +600,8 @@ const GroupAdmin: React.FC = () => {
                               >
                                 <span>{group.name}</span>
                                 <span className={group.members && group.members.length >= 3 ? "text-red-600" : ""}>
-                                  {group.members && group.members.length >= 3 ? 
-                                    " (Plein - Cliquez pour remplacer)" : 
+                                  {group.members && group.members.length >= 3 ?
+                                    " (Plein - Cliquez pour remplacer)" :
                                     ` (${group.members?.length || 0}/3)`}
                                 </span>
                               </ThickBorderButton>
