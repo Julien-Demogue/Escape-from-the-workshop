@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import partyService from "../services/partyService";
 import groupService from "../services/groupService";
+import userService from "../services/userService"; // <-- ajout
 import ThickBorderCard from "../components/ui/ThickBorderCard";
 import ThickBorderButton from "../components/ui/ThickBorderButton";
 import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
@@ -50,6 +51,10 @@ const GroupAdmin: React.FC = () => {
   const [loadingParty, setLoadingParty] = useState(false);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [creatingGroups, setCreatingGroups] = useState(false);
+
+  // Nouveaux états pour gérer l'action "rejoindre"
+  const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
+  const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
 
   // Nouvel état pour démarrage de la partie
   const [startingParty, setStartingParty] = useState(false);
@@ -106,12 +111,22 @@ const GroupAdmin: React.FC = () => {
         }
 
         const svcGroups = await promise;
-        const mapped = svcGroups.map((g: any, idx: number) => ({
-          id: g.id,
-          participants: g.members?.length ?? 0,
-          name: g.name ?? `Groupe ${idx + 1}`,
-          members: g.members ?? []
-        })) as AdminGroup[];
+
+        // Pour chaque groupe, récupérer les membres via la réponse si fournie,
+        // sinon via userService.getUsersByGroupId
+        const mappedPromises = svcGroups.map(async (g: any, idx: number) => {
+          const membersRaw = g.members ?? await userService.getUsersByGroupId(g.id);
+          // normalize members so UI can always read .name (fallback to username)
+          const members = (membersRaw ?? []).map((m: any) => ({ id: m.id, name: m.name ?? m.username }));
+          return {
+            id: g.id,
+            participants: members.length,
+            name: g.name ?? `Groupe ${idx + 1}`,
+            members
+          } as AdminGroup;
+        });
+
+        const mapped = await Promise.all(mappedPromises);
         setGroups(mapped);
       } catch (err) {
         console.error(err);
@@ -130,20 +145,88 @@ const GroupAdmin: React.FC = () => {
     setTargetGroupId(null);
   };
 
-  const handleDeletePlayer = (groupId: number, participant: Participant) => {
-    setGroups(currentGroups => {
-      return currentGroups.map(group => {
-        if (group.id === groupId) {
-          const updatedMembers = group.members?.filter(m => m.id !== participant.id);
-          return {
-            ...group,
-            members: updatedMembers,
-            participants: (updatedMembers?.length || 0)
-          };
-        }
-        return group;
-      });
-    });
+  // Nouveau : supprimer tout le groupe (via service)
+  const handleDeleteGroup = async (groupId: number) => {
+    if (!confirm("Supprimer ce groupe ? Cette action est irréversible.")) return;
+    try {
+      await groupService.deleteGroup(groupId);
+      setGroups(currentGroups => currentGroups.filter(g => g.id !== groupId));
+      if (selectedGroupId === groupId) {
+        setSelectedGroupId(null);
+      }
+      setErrorMessage(null);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Impossible de supprimer le groupe via le serveur.");
+    }
+  };
+
+  // Nouveau : renommer le groupe (prompt simple) -> envoi au service
+  const handleRenameGroup = async (groupId: number) => {
+    const current = groups.find(g => g.id === groupId);
+    if (!current) return;
+    const newName = prompt("Nouveau nom du groupe :", current.name ?? "");
+    if (newName === null) return;
+    try {
+      const updated = await groupService.updateGroupName(groupId, newName);
+      setGroups(currentGroups => currentGroups.map(g => g.id === groupId ? { ...g, name: updated?.name ?? newName } : g));
+      setErrorMessage(null);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Impossible de renommer le groupe via le serveur.");
+    }
+  };
+
+  // Nouveau : rejoindre un groupe (utilise l'utilisateur connecté via l'API)
+  const handleJoinGroup = async (groupId: number) => {
+    // Prevent multiple simultaneous joins
+    if (joiningGroupId) return;
+
+    // Prevent joining the same group twice locally
+    if (currentGroupId === groupId) {
+      setErrorMessage("Vous avez déjà rejoint ce groupe.");
+      return;
+    }
+
+    // Prevent joining another group if we already joined one locally
+    if (currentGroupId && currentGroupId !== groupId) {
+      setErrorMessage("Vous êtes déjà dans un autre groupe.");
+      return;
+    }
+
+    try {
+      setJoiningGroupId(groupId);
+      await groupService.joinGroup(groupId);
+      // récupérer les membres mis à jour pour ce groupe
+      const membersRaw = await userService.getUsersByGroupId(groupId);
+      // normalize and dedupe members so UI can't get duplicates
+      const members = (membersRaw ?? []).map((m: any) => ({ id: m.id, name: m.name ?? m.username }));
+      const uniqueMembers: Participant[] = [];
+      for (const m of members) {
+        if (!uniqueMembers.find(u => u.id === m.id)) uniqueMembers.push(m);
+      }
+      setGroups(currentGroups => currentGroups.map(g =>
+        g.id === groupId
+          ? {
+            ...g,
+            members: uniqueMembers,
+            participants: uniqueMembers.length
+          }
+          : g
+      ));
+      // marquer localement que nous sommes dans ce groupe pour bloquer d'autres joins côté UI
+      setCurrentGroupId(groupId);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error(err);
+      if (err?.response?.status === 400) {
+        setErrorMessage("Ce groupe est plein ou vous êtes déjà dans un groupe.");
+      } else {
+        setErrorMessage("Impossible de rejoindre le groupe via le serveur.");
+      }
+    } finally {
+      setJoiningGroupId(null);
+    }
   };
 
   const handleMoveParticipant = (toGroupId: number) => {
@@ -266,6 +349,12 @@ const GroupAdmin: React.FC = () => {
 
   // Ajout : handler pour démarrer la partie (endDate = now + 1h)
   const handleStartParty = async () => {
+    // NEW: prevent starting when there are no groups
+    if (groups.length === 0) {
+      setErrorMessage("Impossible de démarrer : aucun groupe n'a été créé.");
+      return;
+    }
+
     if (!id) {
       setErrorMessage("Aucun identifiant de partie fourni.");
       return;
@@ -303,11 +392,23 @@ const GroupAdmin: React.FC = () => {
         {/* Remplacé : Link vers dashboard -> bouton qui démarre la partie */}
         <ThickBorderButton
           onClick={handleStartParty}
-          disabled={startingParty}
+          // NEW: disable when starting OR when there are no groups
+          disabled={startingParty || groups.length === 0}
           className="flex items-center justify-center"
+          title={groups.length === 0 ? "Créer au moins un groupe avant de démarrer" : undefined}
         >
           {startingParty ? "Démarrage..." : "Démarrer"}
         </ThickBorderButton>
+
+        {groups.length === 0 && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-sm text-red-600 mt-1 text-center max-w-xs"
+          >
+            Créez au moins un groupe avant de démarrer la partie.
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col items-center justify-center h-full gap-8 max-w-md mx-auto">
@@ -335,7 +436,7 @@ const GroupAdmin: React.FC = () => {
             />
           </div>
 
-          <div className="flex flex-col gap-2">
+          {/* <div className="flex flex-col gap-2">
             <label htmlFor="numParticipants">Nombre de participants par groupes</label>
             <ThickBorderInput
               id="numParticipants"
@@ -346,7 +447,7 @@ const GroupAdmin: React.FC = () => {
               onChange={(e) => handleParticipantsPerGroupChange(e.target.value)}
               placeholder="Entre 1 et 3"
             />
-          </div>
+          </div> */}
 
           {/* <ThickBorderCheckbox
             label="Je fais partie des joueurs"
@@ -396,15 +497,20 @@ const GroupAdmin: React.FC = () => {
                 setCreatingGroups(true);
                 // createGroups crée le nombre de groupes demandés côté serveur
                 await groupService.createGroups(partyId, numGroups);
-                // recharger les groupes
+
+                // recharger les groupes et MERGER les membres existants pour éviter qu'ils disparaissent
                 const svcGroups = await groupService.getByPartyId(partyId);
-                const mapped = svcGroups.map((g, idx) => ({
-                  id: g.id,
-                  participants: (g as any).members?.length ?? numParticipants,
-                  name: g.name ?? `Groupe ${idx + 1}`,
-                  members: (g as any).members ?? []
-                })) as AdminGroup[];
-                setGroups(mapped);
+                setGroups(prev => svcGroups.map((g: any, idx: number) => {
+                  const existing = prev.find(pg => pg.id === g.id);
+                  const membersRaw = (g as any).members ?? existing?.members ?? [];
+                  const members = (membersRaw ?? []).map((m: any) => ({ id: m.id, name: m.name ?? m.username }));
+                  return {
+                    id: g.id,
+                    participants: members.length ?? numParticipants,
+                    name: g.name ?? `Groupe ${idx + 1}`,
+                    members
+                  } as AdminGroup;
+                }));
                 setSelectedGroupId(null);
                 setErrorMessage(null);
               } catch (err) {
@@ -416,7 +522,7 @@ const GroupAdmin: React.FC = () => {
             }}
             disabled={creatingGroups}
           >
-            {creatingGroups ? "Création..." : "Créer aléatoirement les groupes"}
+            {creatingGroups ? "Création..." : "Créer les groupes"}
           </ThickBorderButton>
         </div>
 
@@ -436,20 +542,19 @@ const GroupAdmin: React.FC = () => {
                     {group.name}
                   </div>
                   <div className="flex flex-wrap gap-2 items-center justify-center min-h-[60px]">
-                    {group.members?.map((member) => (
+                    {group.members?.map((member, mIdx) => (
+                      // use a safer unique key: prefer member.id, fallback to index, include group id
                       <div
-                        key={member.id}
-                        className="relative"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveClick(member, group.id);
-                        }}
+                        key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`}
+                        className="relative flex items-center gap-2"
+                      // onClick removed intentionally to disable player move options
                       >
                         <ThickBorderCircle
                           size={28}
-                          style={{ backgroundColor: 'white', cursor: 'pointer' }}
+                          style={{ backgroundColor: 'white', cursor: 'default' }}
                           title={member.name}
                         />
+                        <span className="text-sm">{member.name}</span>
                       </div>
                     ))}
                   </div>
@@ -461,72 +566,90 @@ const GroupAdmin: React.FC = () => {
             {selectedGroupId && (
               <>
                 <div
-                  className="fixed inset-0"
-                  onClick={() => setSelectedGroupId(null)}
+                  // overlay juste en-dessous du panneau (au-dessus du header z-20)
+                  className="fixed inset-0 z-40"
+                  onClick={() => {
+                    setSelectedGroupId(null);
+                    setReplacementMode(false);
+                    setTargetGroupId(null);
+                  }}
                 />
                 <div
-                  className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-10 overflow-y-auto"
+                  // panneau en premier plan (au-dessus du header z-20 et autres éléments)
+                  className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-50 overflow-y-auto"
                   style={{
                     borderTopLeftRadius: '18px',
                     borderBottomLeftRadius: '18px',
                     borderRight: 'none'
                   }}
                 >
-                  <div className="flex flex-col gap-6">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-bold">
-                        {groups.find(g => g.id === selectedGroupId)?.name}
-                      </h3>
-                      <button
-                        onClick={() => {
-                          setSelectedGroupId(null);
-                          setReplacementMode(false);
-                          setTargetGroupId(null);
-                        }}
-                        className="text-2xl font-bold hover:text-gray-600"
-                      >
-                        ×
-                      </button>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-bold">
+                          {groups.find(g => g.id === selectedGroupId)?.name}
+                        </h3>
+                        <button
+                          onClick={() => handleRenameGroup(selectedGroupId)}
+                          className="text-sm px-2 py-1 border rounded hover:bg-gray-100"
+                          title="Renommer le groupe"
+                        >
+                          ✎
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Show join controls only when the user hasn't joined any group yet */}
+                        {!currentGroupId ? (
+                          <button
+                            onClick={() => handleJoinGroup(selectedGroupId)}
+                            className="px-3 py-1 border rounded bg-white hover:bg-gray-50"
+                            disabled={
+                              // disable if group full OR join in progress on this group
+                              (groups.find(g => g.id === selectedGroupId)?.members?.length ?? 0) >= 3 ||
+                              joiningGroupId === selectedGroupId
+                            }
+                          >
+                            {joiningGroupId === selectedGroupId ? "Rejoindre..." : "Rejoindre"}
+                          </button>
+                        ) : currentGroupId === selectedGroupId ? (
+                          <div className="px-3 py-1 border rounded bg-green-50 text-sm">Vous avez rejoint ce groupe</div>
+                        ) : (
+                          <div className="px-3 py-1 border rounded bg-gray-50 text-sm">Déjà dans un autre groupe</div>
+                        )}
+                        <button
+                          onClick={() => handleDeleteGroup(selectedGroupId)}
+                          className="text-xl font-bold hover:text-red-600"
+                          title="Supprimer le groupe"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-3">
-                      {groups.find(g => g.id === selectedGroupId)?.members?.map(member => (
-                        <div key={member.id} className="flex items-center justify-between gap-3">
+
+                    <div className="text-sm text-gray-600">
+                      {(groups.find(g => g.id === selectedGroupId)?.members?.length ?? 0)}/3 participants
+                    </div>
+
+                    <div className="flex flex-col gap-3 mt-2">
+                      {groups.find(g => g.id === selectedGroupId)?.members?.map((member, mIdx) => (
+                        <div key={`${member.id ?? 'noid'}-${selectedGroupId}-${mIdx}`} className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <ThickBorderCircle
                               size={20}
-                              style={{
-                                backgroundColor:
-                                  replacementMode ? 'rgba(255, 255, 255, 0.7)' : 'white',
-                                cursor: replacementMode ? 'pointer' : 'default'
-                              }}
-                              onClick={() => {
-                                if (replacementMode && movingParticipant) {
-                                  handleReplacePlayer(selectedGroupId!, member);
-                                }
-                              }}
+                              style={{ backgroundColor: 'white', cursor: 'default' }}
                             />
-                            <span className={replacementMode ? 'cursor-pointer' : ''}>
-                              {member.name}
-                            </span>
+                            <span>{member.name}</span>
                           </div>
-                          {!replacementMode && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleMoveClick(member, selectedGroupId!)}
-                                className="text-sm hover:text-blue-600"
-                              >
-                                ↔
-                              </button>
-                              <button
-                                onClick={() => handleDeletePlayer(selectedGroupId!, member)}
-                                className="text-xl font-bold hover:text-red-600"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {/* Removed the per-member "Déplacer" button from the right-hand panel */}
+                          </div>
                         </div>
                       ))}
+                      {(groups.find(g => g.id === selectedGroupId)?.members?.length ?? 0) === 0 && (
+                        <div className="text-sm text-gray-500">
+                          Aucun participant dans ce groupe.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -537,7 +660,8 @@ const GroupAdmin: React.FC = () => {
             {showMoveModal && movingParticipant && (
               <>
                 <div
-                  className="fixed inset-0 bg-black bg-opacity-50"
+                  // overlay du modal au-dessus de tout sauf le panneau (doit être au-dessus aussi si modal ouvert)
+                  className="fixed inset-0 bg-black bg-opacity-50 z-55"
                   onClick={() => {
                     setShowMoveModal(false);
                     setMovingParticipant(null);
@@ -546,7 +670,7 @@ const GroupAdmin: React.FC = () => {
                   }}
                 />
                 <div
-                  className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 bg-white border-2 border-black p-6 z-20 rounded-lg"
+                  className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-96 bg-white border-2 border-black p-6 z-60 rounded-lg"
                 >
                   <div className="flex flex-col gap-4">
                     <h3 className="text-xl font-bold text-center">
@@ -560,9 +684,9 @@ const GroupAdmin: React.FC = () => {
                         <div className="flex flex-col gap-2">
                           {groups
                             .find(g => g.id === targetGroupId)
-                            ?.members?.map(player => (
+                            ?.members?.map((player, pIdx) => (
                               <ThickBorderButton
-                                key={player.id}
+                                key={`${player.id ?? 'noid'}-${targetGroupId}-${pIdx}`}
                                 onClick={() => handleReplacePlayer(targetGroupId!, player)}
                                 className="w-full flex items-center gap-2 justify-between"
                               >
@@ -615,14 +739,6 @@ const GroupAdmin: React.FC = () => {
             )}
           </div>
         )}
-
-        <div className="absolute bottom-8 left-8">
-          <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-            <ThickBorderButton>
-              Retour
-            </ThickBorderButton>
-          </Link>
-        </div>
       </div>
     </div>
   );
