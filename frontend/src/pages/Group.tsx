@@ -72,16 +72,37 @@ const Group: React.FC = () => {
         setGroups(mapped);
         setError(null);
 
-        // Remplacement: lire l'id utilisateur depuis localStorage au lieu d'appeler userService.getCurrentUser/getMe
         try {
-          const stored = localStorage.getItem("userId");
-          const meId = stored ? parseInt(stored, 10) : NaN;
-          if (!isNaN(meId)) {
-            const found = mapped.find((mg) => mg.members?.some((mem) => mem.id === meId));
-            if (found) setCurrentGroupId(found.id);
+          const userGroup = await userService.getUserGroupInParty(partyId);
+          if (userGroup && userGroup.id) {
+            setCurrentGroupId(userGroup.id);
+          } else {
+            setCurrentGroupId(null);
+            // fallback to localStorage as before only when server returns null
+            try {
+              const stored = localStorage.getItem("userId");
+              const meId = stored ? parseInt(stored, 10) : NaN;
+              if (!isNaN(meId)) {
+                const found = mapped.find((mg) => mg.members?.some((mem) => mem.id === meId));
+                if (found) setCurrentGroupId(found.id);
+              }
+            } catch {
+              // ignore parsing/localStorage fail
+            }
           }
-        } catch {
-          // ignore si parsing/localStorage fail
+        } catch (svcErr) {
+          // if server check fails, fallback to localStorage to preserve some behavior
+          console.warn("Vérification serveur du groupe utilisateur échouée, fallback local:", svcErr);
+          try {
+            const stored = localStorage.getItem("userId");
+            const meId = stored ? parseInt(stored, 10) : NaN;
+            if (!isNaN(meId)) {
+              const found = mapped.find((mg) => mg.members?.some((mem) => mem.id === meId));
+              if (found) setCurrentGroupId(found.id);
+            }
+          } catch {
+            // ignore
+          }
         }
       } catch (err) {
         console.error(err);

@@ -128,6 +128,18 @@ const GroupAdmin: React.FC = () => {
 
         const mapped = await Promise.all(mappedPromises);
         setGroups(mapped);
+
+        try {
+          const userGroup = await userService.getUserGroupInParty(partyId);
+          if (userGroup && userGroup.id) {
+            setCurrentGroupId(userGroup.id);
+          } else {
+            setCurrentGroupId(null);
+          }
+        } catch (innerErr) {
+          // if server check fails, keep existing behaviour (no crash) — optionally fallback to localStorage elsewhere
+          console.warn("Impossible de vérifier le groupe de l'utilisateur côté serveur:", innerErr);
+        }
       } catch (err) {
         console.error(err);
         setErrorMessage("Impossible de récupérer les groupes depuis le serveur.");
