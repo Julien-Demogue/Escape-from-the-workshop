@@ -50,7 +50,7 @@ const App: React.FC = () => (
     <Route path="/courier-loire" element={<CourierLoire />} />
     <Route path="/groupadmin/:id" element={<GroupAdmin />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
-    <Route path="/group" element={<Group />} />
+    <Route path="/group/:id" element={<Group />} />
     <Route path="/websocket-test" element={<WebSocketTest />} />
   </Routes>
 );
