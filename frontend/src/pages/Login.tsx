@@ -9,7 +9,7 @@ const Login = () => {
   const onSubmit = async () => {
     try {
       setLoading(true)
-      const hashedEmail = btoa(email)
+      const hashedEmail = await hashEmail(email)
       const response = await authService.login(hashedEmail)
       if (response) {
         window.location.href = "/home"
@@ -19,6 +19,20 @@ const Login = () => {
       setLoading(false)
     }
   }
+  async function hashEmail(email: string) {
+  // Encoder la chaîne en UTF-8
+  const encoder = new TextEncoder();
+  const data = encoder.encode(email);
+
+  // Calculer le hash avec SHA-256
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+
+  // Convertir le hash en chaîne hexadécimale
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+  return hashHex;
+}
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">

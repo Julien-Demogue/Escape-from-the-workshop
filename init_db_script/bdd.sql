@@ -47,7 +47,7 @@ CREATE table if not EXISTS parties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     adminUserId INT NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
-    endTime TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 HOUR),
+    endTime TIMESTAMP,
     FOREIGN KEY (adminUserId) REFERENCES users (id)
 );
 
