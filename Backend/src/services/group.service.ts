@@ -73,8 +73,11 @@ export class GroupService {
     }
 
     async deleteGroup(groupId: number): Promise<Group> {
-        return this.prisma.group.delete({
-            where: { id: groupId },
+        return this.prisma.$transaction(async (tx) => {
+            await tx.groupUser.deleteMany({ where: { groupId } });
+            await tx.message.deleteMany({ where: { groupId } });
+            await tx.challengeProgress.deleteMany({ where: { groupId } });
+            return tx.group.delete({ where: { id: groupId } });
         });
     }
 }

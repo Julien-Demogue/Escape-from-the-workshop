@@ -133,7 +133,7 @@ VALUES (
     (
         6,
         '',
-        'Aucun indice trouvé =(',
+        'Aucun indice trouvé 😭',
         'Une plume enchantée s''agite : « Les rivières sont des routes, et les châteaux aiment la Loire. Suis son cours, mais ne t''éloigne jamais trop d''elle. »',
         100
     ),
