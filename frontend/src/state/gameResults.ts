@@ -76,7 +76,7 @@ export function reportGameResult(gameId: GameId, partial: Partial<GameResult>) {
 export function onGameResultsChange(cb: (r: GameResults) => void) {
   const handle = () => cb(readGameResults());
   window.addEventListener("storage", handle);
-  window.addEventListener(EVT as any, handle);
+  window.addEventListener(EVT, handle);
 
   const vis = () => {
     if (document.visibilityState === "visible") cb(readGameResults());
@@ -85,7 +85,7 @@ export function onGameResultsChange(cb: (r: GameResults) => void) {
 
   return () => {
     window.removeEventListener("storage", handle);
-    window.removeEventListener(EVT as any, handle);
+    window.removeEventListener(EVT, handle);
     document.removeEventListener("visibilitychange", vis);
   };
 }
