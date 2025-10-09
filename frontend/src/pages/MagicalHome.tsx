@@ -1,12 +1,42 @@
 import React, { useState } from 'react';
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import partyService from "../services/partyService";
 import MagicalButton from "../components/ui/MagicalButton";
 import MagicalInput from "../components/ui/MagicalInput";
 import MagicalCard from "../components/ui/MagicalCard";
 
 const MagicalHome = () => {
   const [gameCode, setGameCode] = useState('');
-  
+  const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (message: string, duration = 3000) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), duration);
+  };
+
+  const handleCreateQuest = async () => {
+    try {
+      setCreating(true);
+      // Create party with minimal payload (server can fill defaults)
+      const party = await partyService.createParty({});
+      // persist party id (and full party) for later use
+      if (party?.id) {
+        // pass id via URL
+        navigate(`/groupadmin/${party.id}`);
+      } else {
+        // fallback if API returns unexpected payload
+        setCreating(false);
+        showToast("Une erreur est survenue durant la création de la quête.");
+      }
+    } catch (err) {
+      console.error("Erreur création de la quête :", err);
+      setCreating(false);
+      showToast("Échec de la création de la quête. Réessayez plus tard.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-800 via-amber-900 to-stone-900 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Fond d'étoiles magiques */}
@@ -25,15 +55,15 @@ const MagicalHome = () => {
           />
         ))}
       </div>
-      
+
       {/* Château en arrière-plan */}
-      <div 
+      <div
         className="absolute inset-0 bg-contain bg-center bg-no-repeat opacity-10"
         style={{
           backgroundImage: 'url(https://images.pexels.com/photos/32445519/pexels-photo-32445519.jpeg)',
         }}
       />
-      
+
       {/* Contenu principal */}
       <div className="relative z-10 w-full max-w-2xl">
         {/* Titre magique */}
@@ -46,7 +76,7 @@ const MagicalHome = () => {
           </h2>
           <div className="w-24 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto mb-4"></div>
           <p className="text-amber-200 text-lg font-serif max-w-lg mx-auto leading-relaxed">
-            Plongez dans les mystères des châteaux de la Loire et découvrez les secrets cachés 
+            Plongez dans les mystères des châteaux de la Loire et découvrez les secrets cachés
             de contes oubliés...
           </p>
         </div>
@@ -61,27 +91,30 @@ const MagicalHome = () => {
                 Commencer l'Aventure
                 <span className="text-yellow-600">✦</span>
               </h3>
-              
+
               <div className="flex flex-col sm:flex-row gap-6 items-stretch">
                 {/* Créer une partie */}
                 <div className="flex-1">
-                  <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-                    <MagicalButton variant="magical" className="w-full py-4 text-lg">
-                      <span className="flex items-center justify-center gap-2">
-                        <span>🏰</span>
-                        Créer une Quête
-                      </span>
-                    </MagicalButton>
-                  </Link>
+                  <MagicalButton
+                    variant="magical"
+                    className="w-full py-4 text-lg"
+                    onClick={handleCreateQuest}
+                    disabled={creating}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <span>🏰</span>
+                      {creating ? "Création..." : "Créer une Quête"}
+                    </span>
+                  </MagicalButton>
                 </div>
-                
+
                 {/* Divider magique */}
                 <div className="flex items-center justify-center sm:flex-col gap-2">
                   <div className="w-12 h-px sm:w-px sm:h-12 bg-gradient-to-r sm:bg-gradient-to-b from-transparent via-amber-400 to-transparent"></div>
                   <span className="text-amber-600 font-serif text-sm">ou</span>
                   <div className="w-12 h-px sm:w-px sm:h-12 bg-gradient-to-r sm:bg-gradient-to-b from-transparent via-amber-400 to-transparent"></div>
                 </div>
-                
+
                 {/* Rejoindre une partie */}
                 <div className="flex-1 space-y-4">
                   <MagicalInput
@@ -91,8 +124,8 @@ const MagicalHome = () => {
                     onChange={(e) => setGameCode(e.target.value)}
                     className="text-center"
                   />
-                  <MagicalButton 
-                    variant="primary" 
+                  <MagicalButton
+                    variant="primary"
                     className="w-full py-4 text-lg"
                     disabled={!gameCode.trim()}
                   >
@@ -104,7 +137,7 @@ const MagicalHome = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Informations sur le jeu */}
             <div className="border-t border-amber-300 pt-6">
               <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -127,7 +160,7 @@ const MagicalHome = () => {
             </div>
           </div>
         </MagicalCard>
-        
+
         {/* Navigation supplémentaire */}
         <div className="mt-8 text-center">
           <Link to="/about">
@@ -138,7 +171,7 @@ const MagicalHome = () => {
           </Link>
         </div>
       </div>
-      
+
       {/* Effet de particules en mouvement */}
       <div className="absolute bottom-0 left-0 w-full h-32 pointer-events-none">
         <div className="relative w-full h-full overflow-hidden">
@@ -155,11 +188,32 @@ const MagicalHome = () => {
           ))}
         </div>
       </div>
-      
+
+      {/* Toast d'erreur */}
+      {toastMessage && (
+        <div className="fixed left-1/2 transform -translate-x-1/2 bottom-8 z-50">
+          <div className="toast">{toastMessage}</div>
+        </div>
+      )}
+
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(180deg); }
+        }
+        .toast {
+          background: rgba(20,20,20,0.9);
+          color: #fff;
+          padding: 0.6rem 1rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+          font-weight: 600;
+          backdrop-filter: blur(4px);
+          animation: toast-in 200ms ease;
+        }
+        @keyframes toast-in {
+          from { transform: translateY(8px) scale(0.98); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
         }
       `}</style>
     </div>

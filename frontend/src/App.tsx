@@ -25,24 +25,25 @@ import MagicalAbout from "./pages/MagicalAbout";
 const App: React.FC = () => (
   <Routes>
     {/* Nouvelles pages magiques */}
-    <Route path="/" element={<Login />} /> 
+    <Route path="/" element={<Login />} />
     <Route path="/register" element={<Register />} />
     <Route path="/home" element={<MagicalHome />} />
     <Route path="/dashboard" element={<MagicalDashboard />} />
     <Route path="/about" element={<MagicalAbout />} />
     <Route path="/chambord-enigma" element={<MagicalChambordEnigmaFixed />} />
-    
+
     {/* Pages originales pour compatibilité */}
     <Route path="/original-home" element={<Home />} />
     <Route path="/original-dashboard" element={<Dashboard />} />
     <Route path="/original-about" element={<About />} />
     <Route path="/original-chambord-enigma" element={<ChambordEnigma />} />
-    
+
     <Route path="/puzzle" element={<Puzzle />} />
     <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
     <Route path="/brissac-enigma" element={<BrissacEnigma />} />
     <Route path="/memory-loire" element={<MemoryLoire />} />
     <Route path="/courier-loire" element={<CourierLoire />} />
+    <Route path="/groupadmin/:id" element={<GroupAdmin />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group" element={<Group />} />
     <Route path="/websocket-test" element={<WebSocketTest />} />
