@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // <-- ajout useNavigate
 import ThickBorderButton from "../components/ui/ThickBorderButton";
 import ThickBorderCard from "../components/ui/ThickBorderCard";
 import ThickBorderCircle from "../components/ui/ThickBorderCircle";
@@ -22,6 +22,7 @@ interface PlayerGroup {
 
 const Group: React.FC = () => {
   const { id } = useParams<{ id: string }>(); // attend l'id de la party
+  const navigate = useNavigate(); // <-- nouveau
   const [partyCode, setPartyCode] = useState<string | null>(null);
   const [groups, setGroups] = useState<PlayerGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,13 @@ const Group: React.FC = () => {
   const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
+
+  // <-- toast state et helper (même comportement que MagicalHome)
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (message: string, duration = 3000) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), duration);
+  };
 
   useEffect(() => {
     const loadParty = async () => {
@@ -39,6 +47,35 @@ const Group: React.FC = () => {
         setLoadingParty(true);
         const p = await partyService.getById(partyId);
         setPartyCode(p?.code ?? null);
+
+        const now = Date.now();
+        const end = p?.endTime ? new Date(p.endTime).getTime() : null;
+
+        // Partie terminée
+        if (end && end < now) {
+          showToast("La partie est terminée.");
+          return;
+        }
+
+        // Partie en cours : il y a une endTime future -> vérifier si l'utilisateur a déjà un groupe
+        if (end && end > now) {
+          try {
+            const userGroup = await userService.getUserGroupInParty(partyId);
+            if (userGroup) {
+              navigate(`/dashboard`);
+            } else {
+              showToast("La partie est en cours, vous ne pouvez plus rejoindre un groupe. vous allez être redirigé vers l'accueil.");
+              // Wait few seconds
+              setTimeout(() => {
+                navigate(`/home`);
+              }, 3000);
+            }
+          } catch (err) {
+            console.error("Erreur lors de la vérification du groupe utilisateur :", err);
+            showToast("Impossible de vérifier votre inscription pour cette partie. Réessayez plus tard.");
+          }
+          return;
+        }
       } catch (err) {
         console.error(err);
         setError("Impossible de récupérer la partie.");
@@ -47,7 +84,7 @@ const Group: React.FC = () => {
       }
     };
     loadParty();
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     const loadGroups = async () => {
@@ -235,6 +272,30 @@ const Group: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Toast d'information/erreur (même style que MagicalHome) */}
+      {toastMessage && (
+        <div className="fixed left-1/2 transform -translate-x-1/2 bottom-8 z-50">
+          <div className="toast">{toastMessage}</div>
+        </div>
+      )}
+
+      <style>{`
+        .toast {
+          background: rgba(20,20,20,0.9);
+          color: #fff;
+          padding: 0.6rem 1rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+          font-weight: 600;
+          backdrop-filter: blur(4px);
+          animation: toast-in 200ms ease;
+        }
+        @keyframes toast-in {
+          from { transform: translateY(8px) scale(0.98); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
