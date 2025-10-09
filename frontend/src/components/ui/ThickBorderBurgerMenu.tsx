@@ -33,16 +33,21 @@ const ThickBorderBurgerMenu: React.FC<ThickBorderBurgerMenuProps> = ({ items, ga
       </button>
 
       {/* Menu déroulant */}
-      <div 
-        className={`fixed right-0 top-0 h-full w-64 bg-white border-l-2 border-black p-4 shadow-lg transform transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      <div
+        className={`fixed right-0 top-0 h-full w-64 bg-white border-l-2 border-black p-4 shadow-lg transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         <div className="mt-24 flex flex-col gap-4">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="fixed right-8 top-8 w-10 h-10 flex flex-col justify-center items-center gap-1.5 border-2 border-black rounded-lg hover:bg-gray-100 bg-white"
+          >
+            X
+          </button>
           <ThickBorderCard className="w-full text-center">
             {gameCode}
           </ThickBorderCard>
-          
+
           {items.map((item, index) => (
             <ThickBorderButton
               key={index}

@@ -12,7 +12,6 @@ import type { AxiosError, AxiosResponse } from "axios";
 
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log("Response:", response);
     return response;
   },
   (error: AxiosError) => {

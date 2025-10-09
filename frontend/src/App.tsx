@@ -12,7 +12,7 @@ import ChambordEnigma from "./pages/ChambordEnigma";
 import BrissacEnigma from "./pages/BrissacEnigma";
 import MemoryLoire from "./pages/MemoryLoire";
 import CourierLoire from "./pages/CourierLoire";
-import WebSocketTest from "./pages/WebsocketTest";
+import Messages from "./pages/Messages";
 import Register from "./pages/Register";
 import Login from './pages/Login';
 
@@ -51,7 +51,7 @@ const App: React.FC = () => (
     <Route path="/groupadmin/:id" element={<GroupAdmin />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group/:id" element={<Group />} />
-    <Route path="/websocket-test" element={<WebSocketTest />} />
+    <Route path="/messages" element={<Messages />} />
     <Route path="/end-game" element={<EndGame />} />
   </Routes>
 );
