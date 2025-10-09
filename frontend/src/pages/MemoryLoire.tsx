@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import "../styles/memory-loire.css";
+import "../styles/memory-animations.css";
 import { buildMemoryDeck, type DeckCard } from "../utils/buildMemoryDeck";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import {
@@ -42,6 +44,19 @@ function formatDuration(ms: number) {
 }
 
 export default function MemoryLoire() {
+  // Effet d'étoiles magiques
+  const stars = useMemo(() => 
+    Array.from({ length: 30 }).map((_, i) => ({
+      id: i,
+      style: {
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        animationDelay: `${Math.random() * 3}s`,
+        animationDuration: `${1 + Math.random() * 2}s`,
+      }
+    }))
+  , []);
+
   const base = useMemo(
     () =>
       buildMemoryDeck({
@@ -185,52 +200,69 @@ export default function MemoryLoire() {
   }
 
   return (
-    <div style={{ margin: 30, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <ThickBorderCloseButton />
-      <div style={styles.header}>
-        <h1 style={{ margin: 0 }}>Memory de la Loire — {PAIRS} paires &nbsp;</h1>
-        <div style={styles.meta}>
-          <span>Coups &nbsp;: <strong>{moves}</strong> /60 </span>
-          <span>Temps&nbsp;: <strong>{formatDuration(elapsed)}</strong></span>
-          <button onClick={reshuffleAndRestart} style={styles.resetBtn}>Recommencer</button>
-        </div>
+    <div className="memory-loire">
+      {/* Fond d'étoiles */}
+      <div className="memory-stars">
+        {stars.map(star => (
+          <div
+            key={star.id}
+            className="memory-star"
+            style={star.style}
+          />
+        ))}
       </div>
+      
+      <ThickBorderCloseButton />
+      <div className="memory-card">
+        <h1 className="memory-title">Memory de la Loire — {PAIRS} paires</h1>
+        <div className="memory-meta">
+          <span>Coups : <strong>{moves}</strong> /60</span>
+          <span>Temps : <strong>{formatDuration(elapsed)}</strong></span>
+          <button onClick={reshuffleAndRestart} className="memory-button">Recommencer</button>
+        </div>
 
-      {/* Plateau */}
-      <div style={styles.board}>
-        <div style={styles.grid}>
+        {/* Plateau */}
+        <div className="memory-grid">
           {cards.map((c) => (
-            <button
+            <div 
               key={c.id}
+              className={`memory-card ${c.revealed || c.matched ? 'flipped' : ''} ${c.matched ? 'matched' : ''}`}
               onClick={() => onCardClick(c.id)}
-              disabled={lock || (c.revealed && flippedIds.length === 2) || c.matched}
-              aria-label={c.label}
-              style={{ ...styles.cardBtn, ...(c.matched ? styles.cardMatched : {}) }}
             >
-              <div style={{ ...styles.cardFace, opacity: c.revealed || c.matched ? 1 : 0 }}>
-                <img src={c.img} alt={c.label} loading="lazy" style={styles.img} />
-                <div style={styles.caption}>{c.label}</div>
+              <div className="memory-card-inner">
+                <div className="memory-card-front">
+                  <span>?</span>
+                </div>
+                <div className="memory-card-back">
+                  <img 
+                    src={c.img} 
+                    alt={c.label} 
+                    loading="lazy" 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                    }}
+                  />
+                </div>
               </div>
-              <div style={{ ...styles.cardBack, opacity: c.revealed || c.matched ? 0 : 1 }}>
-                <div style={styles.backInner}>?</div>
-              </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
       {/* Statut + score + clé */}
-      <div style={styles.statusBox}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontWeight: 700 }}>Statut du jeu</span>
-          <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
+      <div className="memory-status">
+        <div className="flex gap-4 flex-wrap items-center">
+          <span className="font-bold">Statut du jeu</span>
+          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
             {status === "completed" ? "Terminé" : status === "failed" ? "Échoué" : "Non visité"}
           </span>
-          <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
-            Score&nbsp;: {score}
+          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
+            Score : {score}
           </span>
-          <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
-            Temps&nbsp;: {formatDuration(elapsed)}
+          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
+            Temps : {formatDuration(elapsed)}
           </span>
         </div>
 
@@ -254,94 +286,13 @@ export default function MemoryLoire() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  wrap: { padding: 16 },
-  header: {
-    display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12,
-  },
-  meta: { display: "flex", alignItems: "center", gap: 10 },
-  resetBtn: {
-    padding: "8px 12px", borderRadius: 10, border: "1px solid #e5e7eb", background: "white",
-    cursor: "pointer", fontWeight: 600,
-  },
-  board: {
-    marginInline: "auto",
-    maxWidth: "1200px",
-    width: "100%",
-    padding: "20px",
-  },
-  grid: {
-    display: "grid",
-    gap: 16,
-    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-    justifyItems: "center",
-  },
-  cardBtn: {
-    position: "relative",
-    width: "140px",
-    height: "180px",
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    borderRadius: 12,
-    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-    margin: "4px",
-  },
-  cardMatched: { boxShadow: "inset 0 0 0 2px #16a34a" },
-  cardFace: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    flexDirection: "column",
-    background: "white",
-    border: "2px solid #e5e7eb",
-    borderRadius: 12,
-    transition: "opacity 140ms ease",
-    overflow: "hidden",
-  },
-  cardBack: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    background: "#e5e7eb",
-    border: "2px solid #e5e7eb",
-    transition: "opacity 140ms ease",
-  },
-  backInner: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: "80%", 
-    height: "80%", 
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10, 
-    background: "#c7d2fe", 
-    fontSize: 48, 
-    fontWeight: 700, 
-    color: "#111827",
-    boxShadow: "inset 0 0 0 3px #93c5fd",
-  },
-  img: { 
-    width: "100%", 
-    height: "85%",  // Laisse de l'espace pour la légende
-    objectFit: "contain", 
-    background: "#f8fafc",
-    padding: "12px",
-  },
-  caption: {
-    fontSize: 12, 
-    color: "#6b7280", 
-    padding: "6px 8px", 
+  winBox: {
+    marginTop: 12,
+    padding: 12,
     textAlign: "center",
-    borderTop: "1px solid #f3f4f6",
-  },
-  statusBox: {
-    marginTop: 12, padding: 12, borderRadius: 12, border: "4px solid black", background: "white",
-  },
-  winBox: { marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", background: "#f0fdf4" },
+    background: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 12,
+    border: "2px solid rgba(253, 230, 138, 0.6)",
+    backdropFilter: "blur(4px)"
+  }
 };

@@ -17,9 +17,11 @@ import Register from "./pages/Register";
 import Login from './pages/Login';
 
 // Nouvelles pages magiques
+import MagicalBrissacEnigma from "./pages/MagicalBrissacEnigma";
 import MagicalHome from "./pages/MagicalHome";
 import MagicalDashboard from "./pages/MagicalDashboard";
 import MagicalChambordEnigmaFixed from "./pages/MagicalChambordEnigmaFixed";
+import MagicalChambordEnigma from "./pages/MagicalChambordEnigma";
 import MagicalAbout from "./pages/MagicalAbout";
 
 const App: React.FC = () => (
@@ -30,7 +32,7 @@ const App: React.FC = () => (
     <Route path="/home" element={<MagicalHome />} />
     <Route path="/dashboard" element={<MagicalDashboard />} />
     <Route path="/about" element={<MagicalAbout />} />
-    <Route path="/chambord-enigma" element={<MagicalChambordEnigmaFixed />} />
+    <Route path="/chambord-enigma" element={<MagicalChambordEnigma />} />
 
     {/* Pages originales pour compatibilité */}
     <Route path="/original-home" element={<Home />} />
@@ -40,12 +42,13 @@ const App: React.FC = () => (
 
     <Route path="/puzzle" element={<Puzzle />} />
     <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
-    <Route path="/brissac-enigma" element={<BrissacEnigma />} />
+    <Route path="/brissac-enigma" element={<MagicalBrissacEnigma />} />
+    <Route path="/original-brissac-enigma" element={<BrissacEnigma />} />
     <Route path="/memory-loire" element={<MemoryLoire />} />
     <Route path="/courier-loire" element={<CourierLoire />} />
     <Route path="/groupadmin/:id" element={<GroupAdmin />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
-    <Route path="/group/:id" element={<Group />} />
+    <Route path="/group" element={<Group />} />
     <Route path="/websocket-test" element={<WebSocketTest />} />
   </Routes>
 );

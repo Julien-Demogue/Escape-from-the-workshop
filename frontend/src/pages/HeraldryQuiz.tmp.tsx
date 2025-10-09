@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import "../styles/heraldry-quiz.css";
 import {
@@ -16,6 +16,8 @@ import chenonceaux from "../assets/images/blason/blason-Chenonceaux.png";
 import amboise from "../assets/images/blason/Blason_Amboise.svg.png";
 import saumur from "../assets/images/blason/blason-Saumur.png";
 import villandry from "../assets/images/blason/Blason_Villandry.svg.png";
+
+import { Link } from "react-router-dom";
 
 type Question = {
   id: string;
@@ -124,7 +126,7 @@ export default function HeraldryQuiz() {
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
 
-  const mixes = useMemo(() => QUESTIONS.map((q) => shuffleOptions(q)), [runId]);
+  const mixes = useMemo(() => QUESTIONS.map(q => shuffleOptions(q)), []);
 
   const q = QUESTIONS[step];
   const mix = mixes[step];
@@ -227,81 +229,98 @@ export default function HeraldryQuiz() {
     setSolvedThisSession(false);
   }
 
+  function solveNow() {
+    setAnswers(QUESTIONS.map(() => 0));
+    setCorrectFlags(QUESTIONS.map(() => true));
+    setStep(QUESTIONS.length - 1);
+    finishSuccess();
+  }
+
   return (
-    <div className="memory-loire">
-      <div className="memory-content">
-        <ThickBorderCloseButton />
+    <>
+      <div className="memory-loire">
+        <div className="memory-content">
+          <ThickBorderCloseButton />
 
-        <div className="memory-header">
-          <h1 className="memory-title">Devine le blason</h1>
-        </div>
-
-        <div className="memory-progress-bar">
-          <div 
-            className="memory-progress-fill" 
-            style={{ width: `${progressPct}%` }} 
-          />
-        </div>
-
-        <p className="memory-meta">
-          Question {step + 1} / {QUESTIONS.length} — Temps : {formatDuration(elapsed)}
-        </p>
-
-        <img 
-          src={q.img} 
-          alt={`Blason ${q.id}`} 
-          className="memory-image"
-          draggable={false} 
-        />
-
-        <div className="memory-options-grid">
-          {mix.opts.map((label, i) => {
-            const chosen = answers[step] === i;
-            return (
-              <button
-                key={i}
-                onClick={() => onPick(i)}
-                disabled={locked}
-                className={`memory-option ${chosen ? "chosen" : ""}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="memory-helper">
-          Le jeu continue même si tu te trompes. S'il y a une erreur à la fin,
-          tu devras recommencer depuis le début jusqu'à tout réussir d'un coup.
-        </p>
-
-        <div className="memory-status-box">
-          <div className="memory-status-row">
-            <span className="memory-status-label">Statut du jeu</span>
-            <span className="memory-status-badge">
-              {status === "completed" 
-                ? "Terminé" 
-                : status === "failed" 
-                ? "Échoué" 
-                : "Non visité"}
-            </span>
-            <span className="memory-status-badge">
-              Score : {score}
-            </span>
-            <span className="memory-status-badge">
-              Temps : {formatDuration(elapsed)}
-            </span>
+          <div className="memory-header">
+            <h1 className="memory-title">Devine le blason</h1>
+            <button onClick={solveNow} className="memory-auto-answer">
+              Répondre automatiquement
+            </button>
           </div>
 
-          {solvedThisSession && status === "completed" && codePart && (
-            <div className="memory-key-container">
-              <div className="memory-key-label">Clé</div>
-              <div className="memory-key-box">{codePart}</div>
-            </div>
-          )}
-        </div>
+          <div className="memory-progress-bar">
+            <div 
+              className="memory-progress-fill" 
+              style={{ width: `${progressPct}%` }} 
+            />
+          </div>
 
+          <p className="memory-meta">
+            Question {step + 1} / {QUESTIONS.length} — Temps : {formatDuration(elapsed)}
+          </p>
+
+          <img 
+            src={q.img} 
+            alt={`Blason ${q.id}`} 
+            className="memory-image"
+            draggable={false} 
+          />
+
+          <div className="memory-options-grid">
+            {mix.opts.map((label, i) => {
+              const chosen = answers[step] === i;
+              return (
+                <button
+                  key={i}
+                  onClick={() => onPick(i)}
+                  disabled={locked}
+                  className={`memory-option ${chosen ? "chosen" : ""}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="memory-helper">
+            Le jeu continue même si tu te trompes. S'il y a une erreur à la fin,
+            tu devras recommencer depuis le début jusqu'à tout réussir d'un coup.
+          </p>
+
+          <div className="memory-status-box">
+            <div className="memory-status-row">
+              <span className="memory-status-label">Statut du jeu</span>
+              <span className="memory-status-badge">
+                {status === "completed" 
+                  ? "Terminé" 
+                  : status === "failed" 
+                  ? "Échoué" 
+                  : "Non visité"}
+              </span>
+              <span className="memory-status-badge">
+                Score : {score}
+              </span>
+              <span className="memory-status-badge">
+                Temps : {formatDuration(elapsed)}
+              </span>
+            </div>
+
+            {solvedThisSession && status === "completed" && codePart && (
+              <div className="memory-key-container">
+                <div className="memory-key-label">Clé</div>
+                <div className="memory-key-box">{codePart}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="memory-back-link">
+            <Link to="/dashboard" className="memory-back-link-text">
+              Retour au tableau de bord
+            </Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

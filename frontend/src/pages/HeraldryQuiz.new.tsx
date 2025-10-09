@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import "../styles/heraldry-quiz.css";
 import {
@@ -16,6 +16,8 @@ import chenonceaux from "../assets/images/blason/blason-Chenonceaux.png";
 import amboise from "../assets/images/blason/Blason_Amboise.svg.png";
 import saumur from "../assets/images/blason/blason-Saumur.png";
 import villandry from "../assets/images/blason/Blason_Villandry.svg.png";
+
+import { Link } from "react-router-dom";
 
 type Question = {
   id: string;
@@ -124,7 +126,7 @@ export default function HeraldryQuiz() {
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
 
-  const mixes = useMemo(() => QUESTIONS.map((q) => shuffleOptions(q)), [runId]);
+  const mixes = useMemo(() => QUESTIONS.map(q => shuffleOptions(q)), [runId]);
 
   const q = QUESTIONS[step];
   const mix = mixes[step];
@@ -227,13 +229,23 @@ export default function HeraldryQuiz() {
     setSolvedThisSession(false);
   }
 
+  function solveNow() {
+    setAnswers(QUESTIONS.map(() => 0));
+    setCorrectFlags(QUESTIONS.map(() => true));
+    setStep(QUESTIONS.length - 1);
+    finishSuccess();
+  }
+
   return (
     <div className="memory-loire">
       <div className="memory-content">
         <ThickBorderCloseButton />
-
+        
         <div className="memory-header">
           <h1 className="memory-title">Devine le blason</h1>
+          <button onClick={solveNow} className="memory-auto-answer">
+            Répondre automatiquement
+          </button>
         </div>
 
         <div className="memory-progress-bar">
@@ -301,6 +313,11 @@ export default function HeraldryQuiz() {
           )}
         </div>
 
+        <div className="memory-back-link">
+          <Link to="/dashboard" className="memory-back-link-text">
+            Retour au tableau de bord
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,153 @@
+.memory-content {
+  background: rgba(26, 28, 44, 0.95);
+  border: 2px solid #fcd34d;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 0 20px rgba(252, 211, 77, 0.2);
+}
+
+.memory-instructions {
+  color: #fcd34d;
+  font-size: 1.25rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-family: serif;
+}
+
+.memory-cipher {
+  font-size: 2.5rem;
+  text-align: center;
+  color: #fcd34d;
+  margin: 1.5rem 0;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 15px rgba(252, 211, 77, 0.5);
+  font-family: serif;
+}
+
+.memory-hints {
+  margin-top: 2rem;
+}
+
+.memory-hint {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid #fbbf24;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #fcd34d;
+  font-family: serif;
+}
+
+.memory-form {
+  margin: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.memory-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 1rem;
+  font-size: 1.2rem;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid #fbbf24;
+  border-radius: 0.5rem;
+  color: #fcd34d;
+  text-align: center;
+  font-family: serif;
+}
+
+.memory-input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.memory-controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.memory-success {
+  margin-top: 2rem;
+  text-align: center;
+  color: #fcd34d;
+  font-family: serif;
+  animation: fadeIn 1s ease;
+}
+
+.memory-error {
+  margin-top: 2rem;
+  text-align: center;
+  color: #ef4444;
+  font-family: serif;
+  animation: fadeIn 1s ease;
+}
+
+.memory-error-message {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #ef4444;
+}
+
+.memory-image {
+  max-width: 200px;
+  margin: 1rem auto;
+  display: block;
+  border-radius: 0.5rem;
+  border: 2px solid #fbbf24;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.memory-image:hover {
+  transform: scale(1.05);
+}
+
+.memory-score {
+  font-size: 1.5rem;
+  margin: 1rem 0;
+  color: #f59e0b;
+}
+
+.memory-key {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid #fbbf24;
+  border-radius: 0.5rem;
+}
+
+.memory-key-label {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #fcd34d;
+}
+
+.memory-key-code {
+  font-family: monospace;
+  font-size: 1.2rem;
+  color: #f59e0b;
+  letter-spacing: 0.1em;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

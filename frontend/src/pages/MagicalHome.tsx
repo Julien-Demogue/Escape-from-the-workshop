@@ -8,7 +8,6 @@ import MagicalCard from "../components/ui/MagicalCard";
 const MagicalHome = () => {
   const [gameCode, setGameCode] = useState('');
   const [creating, setCreating] = useState(false);
-  const [joining, setJoining] = useState(false);
   const navigate = useNavigate();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -148,12 +147,11 @@ const MagicalHome = () => {
                   <MagicalButton
                     variant="primary"
                     className="w-full py-4 text-lg"
-                    onClick={handleJoinQuest}
-                    disabled={!gameCode.trim() || joining}
+                    disabled={!gameCode.trim()}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <span>⚔️</span>
-                      {joining ? "Connexion..." : "Rejoindre la Quête"}
+                      Rejoindre la Quête
                     </span>
                   </MagicalButton>
                 </div>
