@@ -6,6 +6,7 @@ import {
   reportGameResult,
   readGameResults,
   onGameResultsChange,
+  type GameStatus
 } from "../state/gameResults";
 
 import chambord from "../assets/images/blason/blason-Chambord.png";
@@ -113,10 +114,9 @@ export default function HeraldryQuiz() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [correctFlags, setCorrectFlags] = useState<boolean[]>([]);
-  const [runId, setRunId] = useState(0);
   const [locked, setLocked] = useState(false);
 
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [status, setStatus] = useState<GameStatus>("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
 
@@ -221,7 +221,6 @@ export default function HeraldryQuiz() {
     setStep(0);
     setAnswers([]);
     setCorrectFlags([]);
-    setRunId((x) => x + 1);
     setLocked(false);
     startRef.current = Date.now();
     setElapsed(0);

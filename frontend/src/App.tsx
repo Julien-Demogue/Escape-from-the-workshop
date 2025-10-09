@@ -20,7 +20,6 @@ import Login from './pages/Login';
 import MagicalBrissacEnigma from "./pages/MagicalBrissacEnigma";
 import MagicalHome from "./pages/MagicalHome";
 import MagicalDashboard from "./pages/MagicalDashboard";
-import MagicalChambordEnigmaFixed from "./pages/MagicalChambordEnigmaFixed";
 import MagicalChambordEnigma from "./pages/MagicalChambordEnigma";
 import MagicalAbout from "./pages/MagicalAbout";
 import MagicalPuzzle from "./pages/MagicalPuzzle";
