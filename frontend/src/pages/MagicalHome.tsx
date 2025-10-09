@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import partyService from "../services/partyService";
 import userService from "../services/userService"; // added import
+import useToast from "../hooks/useToast";
 import MagicalButton from "../components/ui/MagicalButton";
 import MagicalInput from "../components/ui/MagicalInput";
 import MagicalCard from "../components/ui/MagicalCard";
@@ -11,12 +12,7 @@ const MagicalHome = () => {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const navigate = useNavigate();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (message: string, duration = 3000) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), duration);
-  };
+  const { showToast, Toast } = useToast();
 
   const handleCreateQuest = async () => {
     try {
@@ -41,7 +37,10 @@ const MagicalHome = () => {
 
   const handleJoinQuest = async () => {
     const code = gameCode.trim().toUpperCase();
-    if (!code) return;
+    if (!code || code.length === 0) {
+      showToast("Veuillez entrer le code de la quête.");
+      return;
+    }
     try {
       setJoining(true);
       const party = await partyService.getByCode(code);
@@ -181,7 +180,7 @@ const MagicalHome = () => {
                     variant="primary"
                     className="w-full py-4 text-lg"
                     onClick={handleJoinQuest}
-                    disabled={!gameCode.trim() || joining}
+                    disabled={joining}
                   >
                     <span className="flex items-center justify-center gap-2">
                       <span>⚔️</span>
@@ -244,31 +243,14 @@ const MagicalHome = () => {
       </div>
 
       {/* Toast d'erreur */}
-      {toastMessage && (
-        <div className="fixed left-1/2 transform -translate-x-1/2 bottom-8 z-50">
-          <div className="toast">{toastMessage}</div>
-        </div>
-      )}
+      <Toast />
 
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(180deg); }
         }
-        .toast {
-          background: rgba(20,20,20,0.9);
-          color: #fff;
-          padding: 0.6rem 1rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-          font-weight: 600;
-          backdrop-filter: blur(4px);
-          animation: toast-in 200ms ease;
-        }
-        @keyframes toast-in {
-          from { transform: translateY(8px) scale(0.98); opacity: 0; }
-          to { transform: translateY(0) scale(1); opacity: 1; }
-        }
+        /* toast styles are provided by useToast hook */
       `}</style>
     </div>
   );

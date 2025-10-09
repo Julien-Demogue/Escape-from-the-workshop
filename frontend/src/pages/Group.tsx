@@ -7,6 +7,7 @@ import ThickBorderCircle from "../components/ui/ThickBorderCircle";
 import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService";
+import useToast from "../hooks/useToast";
 
 interface Participant {
   id: number;
@@ -30,13 +31,7 @@ const Group: React.FC = () => {
   const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
-
-  // <-- toast state et helper (même comportement que MagicalHome)
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const showToast = (message: string, duration = 3000) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), duration);
-  };
+  const { showToast, Toast } = useToast();
 
   useEffect(() => {
     const loadParty = async () => {
@@ -85,7 +80,7 @@ const Group: React.FC = () => {
       }
     };
     loadParty();
-  }, [id, navigate]);
+  }, [id, navigate, showToast]);
 
   useEffect(() => {
     const loadGroups = async () => {
@@ -276,24 +271,27 @@ const Group: React.FC = () => {
                     )}
                   </div>
                   <div className="mt-2 flex justify-end">
-                    {/* CHANGED: bouton rejoint style magique */}
-                    <ThickBorderButton
-                      onClick={() => handleJoin(g.id)}
-                      disabled={
-                        (g.members?.length ?? 0) >= 3 ||
-                        joiningGroupId === g.id ||
-                        currentGroupId === g.id
-                      }
-                      className="bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105"
-                    >
-                      {joiningGroupId === g.id
-                        ? "Rejoindre..."
-                        : currentGroupId === g.id
-                          ? "Dans ce groupe"
-                          : (g.members?.length ?? 0) >= 3
-                            ? "Plein"
-                            : "Rejoindre"}
-                    </ThickBorderButton>
+                    {/* N'afficher le bouton que si l'utilisateur n'est pas déjà dans un autre groupe,
+                        ou si c'est le groupe courant (pour indiquer "Dans ce groupe"). */}
+                    {(currentGroupId === null || currentGroupId === g.id) ? (
+                      <ThickBorderButton
+                        onClick={() => handleJoin(g.id)}
+                        disabled={
+                          (g.members?.length ?? 0) >= 3 ||
+                          joiningGroupId === g.id ||
+                          currentGroupId === g.id
+                        }
+                        className="bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105"
+                      >
+                        {joiningGroupId === g.id
+                          ? "Rejoindre..."
+                          : currentGroupId === g.id
+                            ? "Dans ce groupe"
+                            : (g.members?.length ?? 0) >= 3
+                              ? "Plein"
+                              : "Rejoindre"}
+                      </ThickBorderButton>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -302,29 +300,7 @@ const Group: React.FC = () => {
         </div>
       </div>
 
-      {/* Toast d'information/erreur (même style que MagicalHome) */}
-      {toastMessage && (
-        <div className="fixed left-1/2 transform -translate-x-1/2 bottom-8 z-50">
-          <div className="toast">{toastMessage}</div>
-        </div>
-      )}
-
-      <style>{`
-        .toast {
-          background: rgba(20,20,20,0.9);
-          color: #fff;
-          padding: 0.6rem 1rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.4);
-          font-weight: 600;
-          backdrop-filter: blur(4px);
-          animation: toast-in 200ms ease;
-        }
-        @keyframes toast-in {
-          from { transform: translateY(8px) scale(0.98); opacity: 0; }
-          to { transform: translateY(0) scale(1); opacity: 1; }
-        }
-      `}</style>
+      <Toast />
     </div>
   );
 };

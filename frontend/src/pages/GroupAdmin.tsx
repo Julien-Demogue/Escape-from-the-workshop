@@ -11,6 +11,7 @@ import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
 import ThickBorderCircle from "../components/ui/ThickBorderCircle";
 import ThickBorderError from "../components/ui/ThickBorderError";
 import ThickBorderInput from "../components/ui/ThickBorderInput";
+import useToast from "../hooks/useToast";
 
 interface Participant {
   id: number;
@@ -36,6 +37,7 @@ const groupsFetchCache = new Map<number, Promise<any>>();
 // --- fin ajout ---
 
 const GroupAdmin: React.FC = () => {
+  const { showToast, Toast } = useToast();
   const [numberOfGroups, setNumberOfGroups] = useState("1");
   const [participantsPerGroup, setParticipantsPerGroup] = useState("1");
   const [isPlayer, setIsPlayer] = useState(false);
@@ -364,7 +366,12 @@ const GroupAdmin: React.FC = () => {
   const handleStartParty = async () => {
     // NEW: prevent starting when there are no groups
     if (groups.length === 0) {
-      setErrorMessage("Impossible de démarrer : aucun groupe n'a été créé.");
+      showToast("Impossible de démarrer : aucun groupe n'a été créé.");
+      return;
+    }
+
+    if (!currentGroupId) {
+      showToast("Vous devez rejoindre un groupe pour démarrer la partie.");
       return;
     }
 
@@ -423,9 +430,12 @@ const GroupAdmin: React.FC = () => {
 
         <ThickBorderButton
           onClick={handleStartParty}
-          disabled={startingParty || groups.length === 0}
+          disabled={startingParty || groups.length === 0 || !currentGroupId}
           className={`flex items-center justify-center px-4 py-2 ${startingParty ? 'opacity-80' : 'bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105'}`}
-          title={groups.length === 0 ? "Créer au moins un groupe avant de démarrer" : undefined}
+          title={
+            startingParty ? undefined
+              : (!currentGroupId ? "Vous devez rejoindre un groupe pour démarrer la partie" : (groups.length === 0 ? "Créer au moins un groupe avant de démarrer" : undefined))
+          }
         >
           {startingParty ? "Démarrage..." : "Démarrer"}
         </ThickBorderButton>
@@ -433,6 +443,12 @@ const GroupAdmin: React.FC = () => {
         {groups.length === 0 && (
           <div role="status" aria-live="polite" className="text-sm text-red-300 mt-1 text-center max-w-xs">
             Créez au moins un groupe avant de démarrer la partie.
+          </div>
+        )}
+
+        {!currentGroupId && groups.length > 0 && (
+          <div role="status" aria-live="polite" className="text-sm text-red-300 mt-1 text-center max-w-xs">
+            Rejoignez un groupe avant de démarrer la partie.
           </div>
         )}
       </div>
@@ -763,6 +779,9 @@ const GroupAdmin: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Toast pour messages courts */}
+      <Toast />
     </div>
   );
 };
