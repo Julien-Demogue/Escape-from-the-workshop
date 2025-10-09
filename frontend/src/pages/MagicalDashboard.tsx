@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import ThickBorderBurgerMenu from "../components/ui/ThickBorderBurgerMenu";
 import ContextPopup from "../components/ui/ContextPopup";
 import MagicalQuestionMark from "../components/ui/MagicalQuestionMark";
 import { SOLO_CONTEXT } from "../constants/contextText";
 import GameStateService, { type GameStates } from "../services/gameState.service";
 import { readGameResults, reportGameResult } from "../state/gameResults";
 import carteLoire from "../assets/Carte_Loire.png";
+import partyService from "../services/partyService";
 
 const INITIAL_GAMES_STATE: GameStates = {
   'heraldry-quiz': 'unvisited',
@@ -28,7 +28,14 @@ const CASTLE_POSITIONS = {
 };
 
 const MagicalDashboard: React.FC = () => {
-  const gameCode = "ABCXYZ";
+  const DEFAULT_GAME_CODE = "ABCXYZ";
+  const [partyCode, setPartyCode] = useState<string | null>(null);
+  const [endTimestamp, setEndTimestamp] = useState<number | null>(null);
+  // Use mm:ss format default
+  const [timeLeft, setTimeLeft] = useState<string>("00:00");
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const [showPopup, setShowPopup] = useState(() => {
     const shown = localStorage.getItem('contextPopupShown');
     return shown !== 'true';
@@ -52,6 +59,122 @@ const MagicalDashboard: React.FC = () => {
 
     return initialState;
   });
+
+  // Load party info (code + endTime) from localStorage.partyId -> partyService
+  useEffect(() => {
+    const loadParty = async () => {
+      try {
+        const stored = localStorage.getItem("partyId");
+        if (!stored) return;
+        const pid = parseInt(stored, 10);
+        if (isNaN(pid)) return;
+        const p = await partyService.getById(pid);
+        if (p) {
+          setPartyCode(p.code ?? null);
+          if (p.endTime != null) {
+            // p.endTime can be: number (seconds or ms) OR ISO string.
+            let ts: number | null = null;
+
+            // If it's already a number-like value
+            if (typeof p.endTime === "number") {
+              ts = p.endTime;
+            } else {
+              // try to coerce string to number first (e.g. "163..."), else parse as ISO date
+              const asNumber = Number(p.endTime);
+              if (!Number.isNaN(asNumber)) {
+                ts = asNumber;
+              } else {
+                const parsed = Date.parse(String(p.endTime));
+                if (!Number.isNaN(parsed)) ts = parsed;
+              }
+            }
+
+            if (ts == null || Number.isNaN(ts)) {
+              console.warn("party endTime could not be parsed:", p.endTime);
+            } else {
+              // If timestamp looks like seconds (reasonable cutoff), convert to ms
+              if (ts < 1e12) ts = ts * 1000;
+              setEndTimestamp(ts);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Impossible de charger la party :", err);
+      }
+    };
+    loadParty();
+  }, []);
+
+  // Timer: update timeLeft every second based on endTimestamp
+  useEffect(() => {
+    const formatRemainingMMSS = (millis: number) => {
+      if (!Number.isFinite(millis) || millis <= 0) return "00:00";
+      const totalSec = Math.floor(millis / 1000);
+      const minutes = Math.floor(totalSec / 60);
+      const seconds = totalSec % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    };
+
+    if (!endTimestamp || !Number.isFinite(endTimestamp)) {
+      setTimeLeft("00:00");
+      return;
+    }
+
+    // clear previous interval
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const tick = () => {
+      const diff = (endTimestamp as number) - Date.now();
+      const display = formatRemainingMMSS(diff);
+      setTimeLeft(display);
+      if (diff <= 0 && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [endTimestamp]);
+
+  // Sync périodique entre readGameResults() et GameStateService
+  useEffect(() => {
+    const doSync = () => {
+      try {
+        const results = readGameResults();
+        Object.entries(results).forEach(([gameId, r]) => {
+          if (!r || !r.status) return;
+          const current = GameStateService.getStates()[gameId as keyof GameStates];
+          if (current !== r.status) {
+            GameStateService.setState(gameId, r.status);
+          }
+        });
+      } catch (err) {
+        console.warn("Sync game results failed:", err);
+      }
+    };
+
+    // initial sync + periodic
+    doSync();
+    syncRef.current = setInterval(doSync, 5000);
+
+    return () => {
+      if (syncRef.current) {
+        clearInterval(syncRef.current);
+        syncRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!showPopup) {
@@ -96,14 +219,31 @@ const MagicalDashboard: React.FC = () => {
       {/* Overlay léger pour améliorer la lisibilité */}
       <div className="absolute inset-0 bg-gradient-to-br from-amber-100/10 via-transparent to-stone-100/10" />
 
-      {/* Menu latéral */}
-      <ThickBorderBurgerMenu
-        gameCode={gameCode}
-        items={[
-          { label: 'Contexte', onClick: () => setShowPopup(true) },
-          { label: "Messages", onClick: () => navigate('/messages') }
-        ]}
-      />
+      {/* Nouveau header : code partie à gauche, boutons Contexte/Chat à droite */}
+      <div className="absolute top-4 left-4 z-20 flex items-center space-x-3">
+        <div className="px-3 py-1 border-2 border-black rounded-lg font-bold bg-white">
+          {partyCode ?? DEFAULT_GAME_CODE}
+        </div>
+        <div className="px-2 py-1 rounded-md bg-white/90 border text-sm font-medium flex items-center gap-2">
+          <span className="text-xs text-stone-600">Temps restant</span>
+          <span className="font-mono">{timeLeft}</span>
+        </div>
+      </div>
+
+      <div className="absolute top-4 right-4 z-20 flex space-x-2">
+        <button
+          onClick={() => setShowPopup(true)}
+          className="px-3 py-1 bg-white/90 rounded-md shadow-sm border"
+        >
+          Contexte
+        </button>
+        <button
+          onClick={() => navigate('/messages')}
+          className="px-3 py-1 bg-white/90 rounded-md shadow-sm border"
+        >
+          Chat
+        </button>
+      </div>
 
       {/* Pop-up de contexte */}
       <ContextPopup
@@ -112,12 +252,13 @@ const MagicalDashboard: React.FC = () => {
         text={contextText}
       />
 
-      {/* Titre de la carte */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="bg-white/90 backdrop-blur-sm px-8 py-4 rounded-lg shadow-xl border-2 border-stone-600"
+      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+        <div
+          className="bg-white/90 backdrop-blur-sm px-8 py-4 rounded-lg shadow-xl border-2 border-stone-600"
           style={{
             clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
-          }}>
+          }}
+        >
           <h1 className="text-2xl font-bold text-stone-800 font-serif text-center">
             Carte Mystérieuse de la Loire
           </h1>
