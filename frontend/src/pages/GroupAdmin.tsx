@@ -87,6 +87,7 @@ const GroupAdmin: React.FC = () => {
         setErrorMessage("Impossible de récupérer le code de la partie.");
       } finally {
         setLoadingParty(false);
+        localStorage.setItem("partyId", partyId.toString());
       }
     };
     fetchParty();
