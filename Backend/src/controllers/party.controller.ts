@@ -68,7 +68,7 @@ export class PartyController {
     async startParty(req: Request, res: Response): Promise<void> {
         try {
             const partyId = parseInt(req.params.id, 10);
-            const { endDate } = req.body; // expected as timestamp (ms) number or numeric string
+            const { endTime } = req.body; // expected as timestamp (ms) number or numeric string
 
             if (isNaN(partyId)) {
                 res.status(400).json({ error: 'Invalid party id' });
@@ -81,14 +81,14 @@ export class PartyController {
                 return;
             }
 
-            if (endDate === undefined || endDate === null) {
-                res.status(400).json({ error: 'endDate is required' });
+            if (endTime === undefined || endTime === null) {
+                res.status(400).json({ error: 'endTime is required' });
                 return;
             }
 
-            const parsed = typeof endDate === 'string' ? Number(endDate) : endDate;
+            const parsed = typeof endTime === 'string' ? Number(endTime) : endTime;
             if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
-                res.status(400).json({ error: 'Invalid endDate; expected integer timestamp (ms)' });
+                res.status(400).json({ error: 'Invalid endTime; expected integer timestamp (ms)' });
                 return;
             }
 

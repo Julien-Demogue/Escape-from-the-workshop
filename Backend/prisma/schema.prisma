@@ -33,7 +33,7 @@ model Party {
   id          Int     @id @default(autoincrement())
   code        String
   adminUserId Int
-  endDate     BigInt? // timestamp in milliseconds
+  endTime     BigInt? // timestamp in milliseconds
 
   // relations
   adminUser User    @relation(fields: [adminUserId], references: [id])

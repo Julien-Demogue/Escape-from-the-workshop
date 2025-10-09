@@ -94,7 +94,7 @@ router.post('/', (req, res) => partyController.createParty(req, res));
  *           schema:
  *             type: object
  *             properties:
- *               endDate:
+ *               endTime:
  *                 type: integer
  *                 description: Timestamp in milliseconds since epoch
  *     responses:
