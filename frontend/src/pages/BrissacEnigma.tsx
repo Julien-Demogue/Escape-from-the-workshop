@@ -8,6 +8,10 @@ import {
   onGameResultsChange,
 } from "../state/gameResults";
 
+// === INFO (BDD) ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
+
 // Cipher data
 const CIPHERTEXT = "NKWO FOBDO";
 const VALID_ANSWERS = ["DAME VERTE", "LA DAME VERTE"];
@@ -17,7 +21,7 @@ function normalize(str: string): string {
   return str
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "") // strip accents
-    .replace(/[^a-zA-Z]/g, "")      // remove spaces/punct
+    .replace(/[^a-zA-Z]/g, "") // remove spaces/punct
     .toUpperCase();
 }
 
@@ -53,8 +57,12 @@ function CaesarAlphabetDiagram({ shiftBack = 10 }: { shiftBack?: number }) {
               </text>
             </g>
           ))}
-          <text x={5} y={8} fontSize="12" fill="#6b7280">A → Z</text>
-          <text x={5} y={68} fontSize="12" fill="#6b7280">Lire avec −{shiftBack}</text>
+          <text x={5} y={8} fontSize="12" fill="#6b7280">
+            A → Z
+          </text>
+          <text x={5} y={68} fontSize="12" fill="#6b7280">
+            Lire avec −{shiftBack}
+          </text>
         </svg>
       </div>
       <div style={{ color: "#6b7280", fontSize: 12, marginTop: 6 }}>
@@ -86,6 +94,11 @@ export default function BrissacEnigma() {
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
 
+  // === INFO (BDD) === states for loading challenge info from backend
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+
   // load saved + subscribe
   useEffect(() => {
     const saved = readGameResults();
@@ -98,6 +111,26 @@ export default function BrissacEnigma() {
       setScore(r["brissac-enigma"].score);
       setCodePart(r["brissac-enigma"].codePart);
     });
+  }, []);
+
+  // === INFO (BDD) === charge of the challenge info from the backend
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    challengeService
+      .getInfo(4) // Brissac — “Le Nom Caché” tiene challengeId = 4
+      .then((data) => {
+        if (!cancelled) setInfo(data);
+      })
+      .catch((e) => {
+        if (!cancelled) setInfoError(e?.response?.data?.error ?? e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInfo(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function submit() {
@@ -137,7 +170,16 @@ export default function BrissacEnigma() {
     <div style={styles.wrap}>
       <ThickBorderCloseButton />
       <div style={styles.card}>
-        <h1 style={{ margin: 0 }}>Énigme 4 — Brissac</h1>
+        {/* === INFO (BDD) === title + description from database */}
+        {loadingInfo && <p style={{ color: "#6b7280" }}>Chargement de la description…</p>}
+        {infoError && <p style={{ color: "#b91c1c" }}>Error: {infoError}</p>}
+        {info && (
+          <>
+            {info.title && <h1 style={{ marginTop: 8 }}>{info.title}</h1>}
+            <p style={{ whiteSpace: "pre-line", marginTop: 6 }}>{info.description}</p>
+          </>
+        )}
+
         <p style={styles.subtitle}>
           Trouve le nom caché : <strong>{CIPHERTEXT}</strong>
         </p>
