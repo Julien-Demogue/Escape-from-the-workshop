@@ -81,6 +81,7 @@ const Group: React.FC = () => {
         setError("Impossible de récupérer la partie.");
       } finally {
         setLoadingParty(false);
+        localStorage.setItem("partyId", partyId.toString());
       }
     };
     loadParty();
