@@ -9,54 +9,82 @@ import {
   readGameResults,
   onGameResultsChange,
 } from "../state/gameResults";
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
 
 type PlayCard = DeckCard & { revealed: boolean; matched: boolean };
 
-const PAIRS = 20; // 20 paires -> 40 cartes -> 5 lignes x 8 colonnes
-const FLIP_BACK_DELAY_MS = 800;
+const PAIRS = 20;
+const ROWS = 4;
+const COLS = 10;
 
-// --------- Scoring (hybrid: moves + time) ---------
-function movesScore(moves: number): number {
-  if (moves <= 30) return 50;
-  if (moves >= 60) return 0;
-  const t = (moves - 30) / (60 - 30);
+// Tamaños base del tablero
+const BASE_W = 90;
+const BASE_H = 130;
+const GAP = 10;
+
+// Menor delay para cartas incorrectas (más ágil)
+const FLIP_BACK_DELAY_MS = 600;
+
+// ---- Scoring helpers ----
+function movesScore(m: number) {
+  if (m <= 30) return 50;
+  if (m >= 60) return 0;
+  const t = (m - 30) / 30;
   return Math.round(50 * (1 - t));
 }
-
-function timeScore(elapsedMs: number): number {
-  const three = 3 * 60 * 1000;
-  const eight = 8 * 60 * 1000;
-  if (elapsedMs <= three) return 50;
-  if (elapsedMs >= eight) return 0;
-  const t = (elapsedMs - three) / (eight - three);
+function timeScore(ms: number) {
+  const a = 180000, b = 480000; // 3–8 min
+  if (ms <= a) return 50;
+  if (ms >= b) return 0;
+  const t = (ms - a) / (b - a);
   return Math.round(50 * (1 - t));
 }
-
-function computeMemoryScoreHybrid(moves: number, elapsedMs: number): number {
-  return Math.max(0, Math.min(100, movesScore(moves) + timeScore(elapsedMs)));
+function totalScore(m: number, ms: number) {
+  return Math.max(0, Math.min(100, movesScore(m) + timeScore(ms)));
 }
-
-function formatDuration(ms: number) {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+function fmt(ms: number) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m.toString().padStart(2, "0")}:${r.toString().padStart(2, "0")}`;
 }
 
 export default function MemoryLoire() {
-  // Effet d'étoiles magiques
-  const stars = useMemo(() => 
-    Array.from({ length: 30 }).map((_, i) => ({
-      id: i,
-      style: {
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-        animationDelay: `${Math.random() * 3}s`,
-        animationDuration: `${1 + Math.random() * 2}s`,
-      }
-    }))
-  , []);
+  // === INFO (BDD) === Rivau — “Les Familles des Blasons” (challengeId = 3)
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    challengeService
+      .getInfo(3)
+      .then((data) => !cancelled && setInfo(data))
+      .catch((e) => !cancelled && setInfoError(e?.response?.data?.error ?? e.message))
+      .finally(() => !cancelled && setLoadingInfo(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Estrellas (decoración ligera)
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 30 }).map((_, i) => ({
+        id: i,
+        style: {
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          animationDelay: `${Math.random() * 3}s`,
+          animationDuration: `${1 + Math.random() * 2}s`,
+        },
+      })),
+    []
+  );
+
+  // Mazo
   const base = useMemo(
     () =>
       buildMemoryDeck({
@@ -77,56 +105,51 @@ export default function MemoryLoire() {
 
   // Timer
   const startRef = useRef<number>(Date.now());
-  const [elapsed, setElapsed] = useState<number>(0);
-  const [running, setRunning] = useState<boolean>(true);
-
-  // Result persistence + session flag
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
-  const [score, setScore] = useState<number>(0);
-  const [codePart, setCodePart] = useState<string>("");
-  const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
-
-  // Timer ticking
+  const [elapsed, setElapsed] = useState(0);
+  const [running, setRunning] = useState(true);
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 500);
-    return () => window.clearInterval(id);
+    return () => clearInterval(id);
   }, [running]);
 
-  // Load saved result
+  // Persistencia
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [finalScore, setFinalScore] = useState(0);
+  const [codePart, setCodePart] = useState("");
+  const [solvedThisSession, setSolvedThisSession] = useState(false);
   useEffect(() => {
-    const saved = readGameResults();
-    setStatus(saved["memory-loire"].status);
-    setScore(saved["memory-loire"].score);
-    setCodePart(saved["memory-loire"].codePart);
-
+    const s = readGameResults();
+    setStatus(s["memory-loire"].status);
+    setFinalScore(s["memory-loire"].score);
+    setCodePart(s["memory-loire"].codePart);
     return onGameResultsChange((r) => {
       setStatus(r["memory-loire"].status);
-      setScore(r["memory-loire"].score);
+      setFinalScore(r["memory-loire"].score);
       setCodePart(r["memory-loire"].codePart);
     });
   }, []);
 
-  // Win detection
+  // Win
   useEffect(() => {
-    if (cards.length > 0 && cards.every((c) => c.matched)) {
+    if (cards.length && cards.every((c) => c.matched)) {
       setWon(true);
-      const elapsedMs = Date.now() - startRef.current;
+      const ms = Date.now() - startRef.current;
       setRunning(false);
-      setElapsed(elapsedMs);
-      const finalScore = computeMemoryScoreHybrid(moves, elapsedMs);
-      setScore(finalScore);
+      setElapsed(ms);
+      const sc = totalScore(moves, ms);
+      setFinalScore(sc);
       setSolvedThisSession(true);
       reportGameResult("memory-loire", {
         status: "completed",
-        score: finalScore,
-        codePart: codePartFor("memory-loire"), // e.g. "la"
+        score: sc,
+        codePart: codePartFor("memory-loire"),
       });
     }
   }, [cards, moves]);
 
-  // 🔄 Reiniciar tablero (usado tanto manualmente como por penalización)
-  function reshuffleAndRestart() {
+  // Restart
+  function restart() {
     const reshuffled = buildMemoryDeck({
       desiredPairs: PAIRS,
       buckets: ["blason"],
@@ -137,13 +160,13 @@ export default function MemoryLoire() {
     setLock(false);
     setMoves(0);
     setWon(false);
-
     startRef.current = Date.now();
     setElapsed(0);
     setRunning(true);
     setSolvedThisSession(false);
   }
 
+  // Click carta
   function onCardClick(id: string) {
     if (lock) return;
     const idx = cards.findIndex((c) => c.id === id);
@@ -151,13 +174,14 @@ export default function MemoryLoire() {
     const card = cards[idx];
     if (card.revealed || card.matched) return;
 
+    // Voltea instantáneamente (el flip es sólo CSS transform -> muy rápido)
     const next = cards.slice();
     next[idx] = { ...card, revealed: true };
     setCards(next);
 
-    const newlyFlipped = [...flippedIds, id];
-    if (newlyFlipped.length < 2) {
-      setFlippedIds(newlyFlipped);
+    const newly = [...flippedIds, id];
+    if (newly.length < 2) {
+      setFlippedIds(newly);
       return;
     }
 
@@ -165,16 +189,15 @@ export default function MemoryLoire() {
     const newMoves = moves + 1;
     setMoves(newMoves);
 
-    // 🚨 Si supera 60 movimientos, reiniciamos automáticamente
     if (newMoves > 60) {
       setTimeout(() => {
         alert("Trop de coups ! Le jeu recommence 🔄");
-        reshuffleAndRestart();
-      }, 200);
+        restart();
+      }, 150);
       return;
     }
 
-    const [idA, idB] = newlyFlipped;
+    const [idA, idB] = newly;
     const a = next.find((c) => c.id === idA)!;
     const b = next.find((c) => c.id === idB)!;
 
@@ -186,7 +209,7 @@ export default function MemoryLoire() {
         setCards(after);
         setFlippedIds([]);
         setLock(false);
-      }, 200);
+      }, 180);
     } else {
       setTimeout(() => {
         const after = next.map((c) =>
@@ -201,49 +224,74 @@ export default function MemoryLoire() {
 
   return (
     <div className="memory-loire">
-      {/* Fond d'étoiles */}
+      {/* Estrellas */}
       <div className="memory-stars">
-        {stars.map(star => (
-          <div
-            key={star.id}
-            className="memory-star"
-            style={star.style}
-          />
+        {stars.map((star) => (
+          <div key={star.id} className="memory-star" style={star.style} />
         ))}
       </div>
-      
+
       <ThickBorderCloseButton />
+
+      {/* Info desde BDD */}
+      <div className="memory-info">
+        {loadingInfo && <p className="memory-info-loading">Chargement de la description…</p>}
+        {infoError && <p className="memory-info-error">Erreur: {infoError}</p>}
+        {info ? (
+          <>
+            <h1 className="memory-title">{info.title}</h1>
+            <p className="memory-description">{info.description}</p>
+          </>
+        ) : (
+          !loadingInfo &&
+          !infoError && <h1 className="memory-title">Memory de la Loire — {PAIRS} paires</h1>
+        )}
+      </div>
+
+      {/* Tarjeta contenedora */}
       <div className="memory-card">
-        <h1 className="memory-title">Memory de la Loire — {PAIRS} paires</h1>
+        {/* Meta / controles */}
         <div className="memory-meta">
-          <span>Coups : <strong>{moves}</strong> /60</span>
-          <span>Temps : <strong>{formatDuration(elapsed)}</strong></span>
-          <button onClick={reshuffleAndRestart} className="memory-button">Recommencer</button>
+          <span>
+            Coups : <strong>{moves}</strong> /60
+          </span>
+          <span>
+            Temps : <strong>{fmt(elapsed)}</strong>
+          </span>
+          <button onClick={restart} className="memory-button">Recommencer</button>
         </div>
 
-        {/* Plateau */}
-        <div className="memory-grid">
+        {/* Grid fija 4 × 10 */}
+        <div
+          className="memory-grid"
+          style={{
+            gridTemplateColumns: `repeat(${COLS}, ${BASE_W}px)`,
+            gridAutoRows: `${BASE_H}px`,
+            gap: `${GAP}px`,
+          }}
+        >
           {cards.map((c) => (
-            <div 
+            <div
               key={c.id}
-              className={`memory-card ${c.revealed || c.matched ? 'flipped' : ''} ${c.matched ? 'matched' : ''}`}
+              className={`memory-card-item ${c.revealed || c.matched ? "flipped" : ""} ${
+                c.matched ? "matched" : ""
+              }`}
               onClick={() => onCardClick(c.id)}
+              role="button"
+              aria-label={c.label}
             >
-              <div className="memory-card-inner">
+              <div className="memory-card-inner" aria-hidden="true">
                 <div className="memory-card-front">
                   <span>?</span>
                 </div>
                 <div className="memory-card-back">
-                  <img 
-                    src={c.img} 
-                    alt={c.label} 
-                    loading="lazy" 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                    }}
+                  <img
+                    src={c.img}
+                    alt={c.label}
+                    loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
                   />
+                  <div className="memory-card-caption">{c.label}</div>
                 </div>
               </div>
             </div>
@@ -251,48 +299,40 @@ export default function MemoryLoire() {
         </div>
       </div>
 
-      {/* Statut + score + clé */}
+      {/* Status + clé */}
       <div className="memory-status">
-        <div className="flex gap-4 flex-wrap items-center">
-          <span className="font-bold">Statut du jeu</span>
-          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
+        <div className="memory-status-row">
+          <span className="memory-status-label">Statut du jeu</span>
+          <span className="memory-pill">
             {status === "completed" ? "Terminé" : status === "failed" ? "Échoué" : "Non visité"}
           </span>
-          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
-            Score : {score}
-          </span>
-          <span className="px-3 py-1 border-2 border-amber-200 rounded-lg">
-            Temps : {formatDuration(elapsed)}
-          </span>
+          <span className="memory-pill">Score : {finalScore}</span>
+          <span className="memory-pill">Temps : {fmt(elapsed)}</span>
         </div>
 
         {solvedThisSession && status === "completed" && codePart && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Clé</div>
-            <div style={{ padding: "8px 10px", border: "2px dashed black", borderRadius: 8 }}>
-              {codePart}
-            </div>
+          <div className="memory-key">
+            <div className="memory-key-label">Clé</div>
+            <div className="memory-key-box">{codePart}</div>
           </div>
         )}
       </div>
 
       {won && (
-        <div style={styles.winBox}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            textAlign: "center",
+            background: "rgba(255, 255, 255, 0.9)",
+            borderRadius: 12,
+            border: "2px solid rgba(253, 230, 138, 0.6)",
+            backdropFilter: "blur(4px)",
+          }}
+        >
           🎉 Toutes les paires ont été trouvées en <strong>{moves}</strong> coups !
         </div>
       )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  winBox: {
-    marginTop: 12,
-    padding: 12,
-    textAlign: "center",
-    background: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 12,
-    border: "2px solid rgba(253, 230, 138, 0.6)",
-    backdropFilter: "blur(4px)"
-  }
-};

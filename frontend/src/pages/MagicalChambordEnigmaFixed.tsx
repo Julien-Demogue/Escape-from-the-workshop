@@ -1,15 +1,47 @@
-import React, { useState, useMemo } from "react";
+// src/pages/MagicalChambordEnigmaFixed.tsx
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MagicalButton from "../components/ui/MagicalButton";
 import MagicalInput from "../components/ui/MagicalInput";
 import MagicalCard from "../components/ui/MagicalCard";
 import chambordBlason from "../assets/images/blason/blason-chambord.png";
 
+// === BDD ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
+
 const CORRECT_ANSWER = 300;
 const ACCEPT_TOLERANCE = 0;
 
 export default function MagicalChambordEnigmaFixed() {
   const navigate = useNavigate();
+
+  // --- BDD state ---
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    console.log("[ChambordFixed] fetching /challenges/5/info …");
+    challengeService
+      .getInfo(5) // Chambord = 5 (según tu seed)
+      .then((data) => {
+        console.log("[ChambordFixed] response:", data);
+        if (!cancelled) setInfo(data);
+      })
+      .catch((e) => {
+        console.error("[ChambordFixed] error:", e);
+        if (!cancelled) setInfoError(e?.response?.data?.error ?? e.message);
+      })
+      .finally(() => !cancelled && setLoadingInfo(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // --- Game state ---
   const [value, setValue] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "correct" | "wrong">("idle");
   const [tries, setTries] = useState(0);
@@ -36,7 +68,7 @@ export default function MagicalChambordEnigmaFixed() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-800 via-amber-900 to-stone-900 p-4 relative overflow-hidden">
-      {/* Fond d'etoiles magiques */}
+      {/* Fond d'étoiles magiques */}
       <div className="absolute inset-0 pointer-events-none">
         {Array.from({ length: 30 }).map((_, i) => (
           <div
@@ -47,7 +79,7 @@ export default function MagicalChambordEnigmaFixed() {
               top: `${Math.random() * 100}%`,
               animationDelay: `${Math.random() * 3}s`,
               animationDuration: `${1 + Math.random() * 2}s`,
-              opacity: 0.3 + Math.random() * 0.7
+              opacity: 0.3 + Math.random() * 0.7,
             }}
           />
         ))}
@@ -55,9 +87,9 @@ export default function MagicalChambordEnigmaFixed() {
 
       {/* Bouton retour magique */}
       <div className="absolute top-6 left-6 z-20">
-        <MagicalButton 
-          variant="secondary" 
-          onClick={() => navigate('/dashboard')}
+        <MagicalButton
+          variant="secondary"
+          onClick={() => navigate("/dashboard")}
           className="flex items-center gap-2"
         >
           <span>←</span>
@@ -65,42 +97,49 @@ export default function MagicalChambordEnigmaFixed() {
         </MagicalButton>
       </div>
 
-      {/* Contenu principal centre */}
+      {/* Contenu principal centré */}
       <div className="flex items-center justify-center min-h-screen p-8">
         <div className="w-full max-w-4xl">
-          {/* Titre magique */}
+          {/* Titre (desde BDD, fallback si no hay) */}
           <div className="text-center mb-8">
             <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-200 font-serif mb-4 animate-pulse">
-              🏰 Château de Chambord 🏰
+              {loadingInfo && "Chargement…"}
+              {infoError && "Erreur de chargement"}
+              {!loadingInfo &&
+                !infoError &&
+                (info?.title ?? "🏰 Château de Chambord 🏰")}
             </h1>
             <div className="w-32 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto mb-4"></div>
-            <h2 className="text-2xl font-bold text-amber-300 font-serif">
-              Énigme III - L'Emblème Royal
-            </h2>
           </div>
 
           {/* Carte principale */}
-          <MagicalCard variant="parchment" className="backdrop-blur-sm bg-opacity-95">
+          <MagicalCard
+            variant="parchment"
+            className="backdrop-blur-sm bg-opacity-95"
+          >
             <div className="space-y-8">
-              {/* Enigme avec parchemin decoratif */}
+              {/* Enigme/description (desde BDD) */}
               <div className="relative">
                 <div className="text-center p-6 bg-gradient-to-r from-amber-100 via-yellow-50 to-amber-100 rounded-lg border-2 border-amber-400 shadow-inner">
-                  <div className="text-xl font-serif text-amber-900 italic leading-relaxed">
-                    <span className="text-3xl text-amber-600">"</span>
-                    Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
-                    Combien de fois suis-je représenté ?
-                    <span className="text-3xl text-amber-600">"</span>
+                  <div className="text-xl font-serif text-amber-900 italic leading-relaxed whitespace-pre-line">
+                    {loadingInfo && "…"}
+                    {infoError && "Erreur lors du chargement de l'énigme."}
+                    {!loadingInfo &&
+                      !infoError &&
+                      (info?.description ??
+                        `Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
+Combien de fois suis-je représenté ?`)}
                   </div>
                 </div>
-                
-                {/* Coins decoratifs */}
+
+                {/* Coins décoratifs */}
                 <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-amber-600"></div>
                 <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-amber-600"></div>
                 <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-amber-600"></div>
                 <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-amber-600"></div>
               </div>
 
-              {/* Image du blason avec effet magique */}
+              {/* Image du blason */}
               <div className="flex justify-center">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-amber-400/20 to-yellow-400/20 rounded-lg blur animate-pulse"></div>
@@ -112,7 +151,7 @@ export default function MagicalChambordEnigmaFixed() {
                 </div>
               </div>
 
-              {/* Section reponse */}
+              {/* Section réponse */}
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-amber-800 font-serif mb-4 flex items-center justify-center gap-2">
@@ -136,9 +175,9 @@ export default function MagicalChambordEnigmaFixed() {
 
                 {/* Boutons d'action */}
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <MagicalButton 
-                    variant="magical" 
-                    onClick={check} 
+                  <MagicalButton
+                    variant="magical"
+                    onClick={check}
                     disabled={parsed === null}
                     className="px-8 py-3 text-lg"
                   >
@@ -147,9 +186,9 @@ export default function MagicalChambordEnigmaFixed() {
                       Valider la Réponse
                     </span>
                   </MagicalButton>
-                  
-                  <MagicalButton 
-                    variant="secondary" 
+
+                  <MagicalButton
+                    variant="secondary"
                     onClick={() => setShowHint((s) => !s)}
                     className="px-6 py-3"
                   >
@@ -158,9 +197,9 @@ export default function MagicalChambordEnigmaFixed() {
                       {showHint ? "Masquer l'Indice" : "Révéler un Indice"}
                     </span>
                   </MagicalButton>
-                  
-                  <MagicalButton 
-                    variant="secondary" 
+
+                  <MagicalButton
+                    variant="secondary"
                     onClick={reset}
                     className="px-6 py-3"
                   >
@@ -174,7 +213,10 @@ export default function MagicalChambordEnigmaFixed() {
 
               {/* Indice magique */}
               {showHint && (
-                <MagicalCard variant="magical" className="transform animate-pulse">
+                <MagicalCard
+                  variant="magical"
+                  className="transform animate-pulse"
+                >
                   <div className="text-center space-y-3">
                     <h4 className="font-bold text-purple-800 font-serif flex items-center justify-center gap-2">
                       <span>🔍</span>
@@ -182,20 +224,22 @@ export default function MagicalChambordEnigmaFixed() {
                       <span>🔍</span>
                     </h4>
                     <p className="text-purple-700 font-serif">
-                      L'emblème est la <strong>salamandre</strong> de François I<sup>er</sup>,
-                      créature légendaire qui renaît des flammes, souvent sculptée parmi 
-                      les décors du château royal.
+                      L'emblème est la <strong>salamandre</strong> de François I
+                      <sup>er</sup>, créature légendaire qui renaît des flammes,
+                      souvent sculptée parmi les décors du château royal.
                     </p>
                   </div>
                 </MagicalCard>
               )}
 
-              {/* Resultat */}
+              {/* Résultat */}
               {status !== "idle" && (
-                <MagicalCard 
+                <MagicalCard
                   variant={status === "correct" ? "magical" : "stone"}
                   className={`text-center transform animate-bounce ${
-                    status === "correct" ? 'border-emerald-500' : 'border-red-500'
+                    status === "correct"
+                      ? "border-emerald-500"
+                      : "border-red-500"
                   }`}
                 >
                   {status === "correct" ? (
@@ -205,8 +249,9 @@ export default function MagicalChambordEnigmaFixed() {
                         Bravo, Noble Aventurier !
                       </h4>
                       <p className="text-emerald-700">
-                        Vous avez percé le mystère de l'emblème royal ! 
-                        La salamandre de François I<sup>er</sup> n'a plus de secrets pour vous.
+                        Vous avez percé le mystère de l'emblème royal ! La
+                        salamandre de François I<sup>er</sup> n'a plus de
+                        secrets pour vous.
                       </p>
                     </div>
                   ) : (
@@ -216,8 +261,9 @@ export default function MagicalChambordEnigmaFixed() {
                         Pas tout à fait...
                       </h4>
                       <p className="text-red-700">
-                        La réponse n'est pas correcte. Les salamandres sont partout 
-                        dans le château... Cherchez plus attentivement ! 🔍
+                        La réponse n'est pas correcte. Les salamandres sont
+                        partout dans le château... Cherchez plus attentivement !
+                        🔍
                       </p>
                     </div>
                   )}
@@ -231,6 +277,16 @@ export default function MagicalChambordEnigmaFixed() {
                   Tentatives : {tries}
                 </span>
               </div>
+
+              {/* DEBUG opcional en pantalla */}
+              <details className="mt-4">
+                <summary className="cursor-pointer text-amber-200">
+                  Debug
+                </summary>
+                <pre className="text-xs bg-stone-900/50 p-3 rounded-lg text-amber-100 overflow-x-auto">
+                  {JSON.stringify({ info, loadingInfo, infoError }, null, 2)}
+                </pre>
+              </details>
             </div>
           </MagicalCard>
         </div>
