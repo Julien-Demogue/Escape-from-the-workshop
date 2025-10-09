@@ -1,0 +1,11 @@
+/* External dependencies */
+@import "tailwindcss";
+
+/* Base styles et animations */
+@import "./memory-animations.css";
+@import "./magical-home.css";
+
+/* Components spécifiques */
+@import "./memory-loire.css";
+@import "./memory-riddle.css";
+@import "./heraldry-quiz.css";

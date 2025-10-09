@@ -1,7 +1,4 @@
-@import "tailwindcss";
-
-/* Polices magiques */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
+@import "./styles/main.css";
 
 /* Variables CSS pour les animations magiques */
 :root {
