@@ -530,33 +530,30 @@ const GroupAdmin: React.FC = () => {
         {groups.length > 0 && (
           <div className="w-full mt-8">
             {/* Grille des groupes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {groups.map((group) => (
                 <div
                   key={group.id}
-                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 cursor-pointer transition-colors ${selectedGroupId === group.id ? 'bg-gray-100' : ''
+                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 transition-colors ${selectedGroupId === group.id ? 'bg-gray-100' : ''
                     }`}
                   onClick={() => setSelectedGroupId(group.id)}
                 >
-                  <div className="text-lg font-semibold text-center">
-                    {group.name}
+                  <div className="flex items-center justify-between">
+                    <div className="text-lg font-semibold">{group.name}</div>
+                    <div className="text-sm text-gray-600">{group.participants}/3</div>
                   </div>
-                  <div className="flex flex-wrap gap-2 items-center justify-center min-h-[60px]">
-                    {group.members?.map((member, mIdx) => (
-                      // use a safer unique key: prefer member.id, fallback to index, include group id
-                      <div
-                        key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`}
-                        className="relative flex items-center gap-2"
-                      // onClick removed intentionally to disable player move options
-                      >
-                        <ThickBorderCircle
-                          size={28}
-                          style={{ backgroundColor: 'white', cursor: 'default' }}
-                          title={member.name}
-                        />
-                        <span className="text-sm">{member.name}</span>
-                      </div>
-                    ))}
+
+                  <div className="flex flex-wrap gap-2 items-center min-h-[60px]">
+                    {group.members && group.members.length > 0 ? (
+                      group.members.map((member, mIdx) => (
+                        <div key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`} className="flex items-center gap-2">
+                          <ThickBorderCircle size={24} style={{ backgroundColor: 'white', cursor: 'default' }} title={member.name} />
+                          <span className="text-sm">{member.name}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500">Aucun participant</div>
+                    )}
                   </div>
                 </div>
               ))}
