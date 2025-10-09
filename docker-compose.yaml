@@ -49,7 +49,7 @@ services:
     volumes:
       - ./frontend:/app
     environment:
-      - TZ: Europe/Paris
+     TZ: Europe/Paris
     command: >
       /bin/sh -c "cd app; npm i; npm run dev -- --host"
     ports:
@@ -84,7 +84,7 @@ services:
     container_name: mysqld-exporter
     environment:
       - "DATA_SOURCE_NAME=exporter:exporterpassword@tcp(mariadb:3306)/"
-      - TZ: Europe/Paris
+      - TZ=Europe/Paris
     ports:
       - "9104:9104"
     depends_on:
