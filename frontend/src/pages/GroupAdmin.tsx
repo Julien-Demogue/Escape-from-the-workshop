@@ -395,35 +395,48 @@ const GroupAdmin: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full min-h-screen p-8 overflow-y-auto">
+    // CHANGED: fond magical et overlay étoiles
+    <div className="relative w-full min-h-screen p-8 overflow-y-auto bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-100">
+      {/* étoiles magiques */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-yellow-200 opacity-30 animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${1 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-t from-transparent via-amber-900/10 to-transparent" />
+      </div>
+
+      {/* fixed top-right controls (CHANGED: parchment style) */}
       <div className="fixed top-8 right-8 flex flex-col items-center gap-4 z-20">
-        <ThickBorderCard>
+        <ThickBorderCard className="bg-amber-50/5 backdrop-blur-sm border-amber-400 text-stone-900">
           {loadingParty ? "Chargement..." : (partyCode ?? "—")}
         </ThickBorderCard>
 
-        {/* Remplacé : Link vers dashboard -> bouton qui démarre la partie */}
         <ThickBorderButton
           onClick={handleStartParty}
-          // NEW: disable when starting OR when there are no groups
           disabled={startingParty || groups.length === 0}
-          className="flex items-center justify-center"
+          className={`flex items-center justify-center px-4 py-2 ${startingParty ? 'opacity-80' : 'bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105'}`}
           title={groups.length === 0 ? "Créer au moins un groupe avant de démarrer" : undefined}
         >
           {startingParty ? "Démarrage..." : "Démarrer"}
         </ThickBorderButton>
 
         {groups.length === 0 && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="text-sm text-red-600 mt-1 text-center max-w-xs"
-          >
+          <div role="status" aria-live="polite" className="text-sm text-red-300 mt-1 text-center max-w-xs">
             Créez au moins un groupe avant de démarrer la partie.
           </div>
         )}
       </div>
 
-      <div className="flex flex-col items-center justify-center h-full gap-8 max-w-md mx-auto">
+      <div className="flex flex-col items-center justify-center h-full gap-8 max-w-md mx-auto relative z-10">
         <p className="text-sm text-gray-500">Maximum de 45 participants</p>
 
         {errorMessage && (
@@ -468,7 +481,7 @@ const GroupAdmin: React.FC = () => {
           /> */}
 
           <ThickBorderButton
-            className="w-full"
+            className="w-full bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105"
             onClick={async () => {
               const numGroups = parseInt(numberOfGroups || "0");
               const numParticipants = parseInt(participantsPerGroup || "0");
@@ -538,7 +551,7 @@ const GroupAdmin: React.FC = () => {
           </ThickBorderButton>
         </div>
 
-        {/* Affichage des groupes */}
+        {/* Affichage des groupes (CHANGED: cartes parchment) */}
         {groups.length > 0 && (
           <div className="w-full mt-8">
             {/* Grille des groupes */}
@@ -546,13 +559,12 @@ const GroupAdmin: React.FC = () => {
               {groups.map((group) => (
                 <div
                   key={group.id}
-                  className={`border-2 border-black rounded-lg p-4 flex flex-col gap-3 transition-colors ${selectedGroupId === group.id ? 'bg-gray-100' : ''
-                    }`}
+                  className={`rounded-lg p-4 flex flex-col gap-3 transition-colors ${selectedGroupId === group.id ? 'bg-amber-200/10 border-amber-300' : 'bg-amber-50/5 border-amber-400'}`}
                   onClick={() => setSelectedGroupId(group.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-lg font-semibold">{group.name}</div>
-                    <div className="text-sm text-gray-600">{group.participants}/3</div>
+                    <div className="text-lg font-semibold text-amber-100">{group.name}</div>
+                    <div className="text-sm text-amber-200">{group.participants}/3</div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 items-center min-h-[60px]">
@@ -560,11 +572,11 @@ const GroupAdmin: React.FC = () => {
                       group.members.map((member, mIdx) => (
                         <div key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`} className="flex items-center gap-2">
                           <ThickBorderCircle size={24} style={{ backgroundColor: 'white', cursor: 'default' }} title={member.name} />
-                          <span className="text-sm">{member.name}</span>
+                          <span className="text-sm text-amber-100">{member.name}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-gray-500">Aucun participant</div>
+                      <div className="text-sm text-amber-200">Aucun participant</div>
                     )}
                   </div>
                 </div>
@@ -584,12 +596,13 @@ const GroupAdmin: React.FC = () => {
                   }}
                 />
                 <div
-                  // panneau en premier plan (au-dessus du header z-20 et autres éléments)
-                  className="fixed right-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-50 overflow-y-auto"
+                  // panneau déplacé à gauche (CHANGED: left-0 au lieu de right-0)
+                  className="fixed left-0 top-0 h-full w-80 bg-white border-2 border-black p-6 z-50 overflow-y-auto text-stone-900"
                   style={{
-                    borderTopLeftRadius: '18px',
-                    borderBottomLeftRadius: '18px',
-                    borderRight: 'none'
+                    // CHANGED: arrondir côté droit pour un panneau collé à gauche
+                    borderTopRightRadius: '18px',
+                    borderBottomRightRadius: '18px',
+                    borderLeft: 'none'
                   }}
                 >
                   <div className="flex flex-col gap-4">
@@ -600,7 +613,7 @@ const GroupAdmin: React.FC = () => {
                         </h3>
                         <button
                           onClick={() => handleRenameGroup(selectedGroupId)}
-                          className="text-sm px-2 py-1 border rounded hover:bg-gray-100"
+                          className="text-sm px-2 py-1 border rounded hover:bg-gray-100 text-stone-900"
                           title="Renommer le groupe"
                         >
                           ✎
@@ -611,7 +624,7 @@ const GroupAdmin: React.FC = () => {
                         {!currentGroupId ? (
                           <button
                             onClick={() => handleJoinGroup(selectedGroupId)}
-                            className="px-3 py-1 border rounded bg-white hover:bg-gray-50"
+                            className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-stone-900"
                             disabled={
                               // disable if group full OR join in progress on this group
                               (groups.find(g => g.id === selectedGroupId)?.members?.length ?? 0) >= 3 ||
@@ -621,9 +634,9 @@ const GroupAdmin: React.FC = () => {
                             {joiningGroupId === selectedGroupId ? "Rejoindre..." : "Rejoindre"}
                           </button>
                         ) : currentGroupId === selectedGroupId ? (
-                          <div className="px-3 py-1 border rounded bg-green-50 text-sm">Vous avez rejoint ce groupe</div>
+                          <div className="px-3 py-1 border rounded bg-green-50 text-sm text-stone-900">Vous avez rejoint ce groupe</div>
                         ) : (
-                          <div className="px-3 py-1 border rounded bg-gray-50 text-sm">Déjà dans un autre groupe</div>
+                          <div className="px-3 py-1 border rounded bg-gray-50 text-sm text-stone-900">Déjà dans un autre groupe</div>
                         )}
                         <button
                           onClick={() => handleDeleteGroup(selectedGroupId)}
@@ -647,7 +660,7 @@ const GroupAdmin: React.FC = () => {
                               size={20}
                               style={{ backgroundColor: 'white', cursor: 'default' }}
                             />
-                            <span>{member.name}</span>
+                            <span className="text-stone-900">{member.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {/* Removed the per-member "Déplacer" button from the right-hand panel */}

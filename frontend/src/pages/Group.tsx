@@ -213,58 +213,86 @@ const Group: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen p-6 flex flex-col items-center gap-8">
-      <div className="w-full max-w-md flex flex-col items-center gap-4">
-        <ThickBorderCard>{loadingParty ? "Chargement..." : partyCode ?? "—"}</ThickBorderCard>
-        <div className="w-full text-center text-sm text-gray-600">Rejoignez un groupe (max 3 joueurs)</div>
+    // CHANGED: appliquer un fond magique et position relative pour overlays
+    <div className="w-full min-h-screen p-6 flex flex-col items-center gap-8 bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-100 relative overflow-hidden">
 
-        {error && <div className="text-sm text-red-600">{error}</div>}
+      {/* Fond d'étoiles magiques (overlay décoratif) */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-yellow-200 opacity-30 animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${1 + Math.random() * 2}s`,
+            }}
+          />
+        ))}
+        {/* léger voile parchmént */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-900/10 to-transparent" />
+      </div>
+
+      {/* content (au-dessus de l'overlay) */}
+      <div className="relative z-10 w-full max-w-md flex flex-col items-center gap-4">
+        {/* CHANGED: style parchment pour le card montrant le code */}
+        <ThickBorderCard className="bg-amber-50/5 backdrop-blur-sm border-amber-400 text-stone-900">
+          {loadingParty ? "Chargement..." : partyCode ?? "—"}
+        </ThickBorderCard>
+
+        <div className="w-full text-center text-sm text-amber-200">Rejoignez un groupe (max 3 joueurs)</div>
+
+        {error && <div className="text-sm text-red-300">{error}</div>}
 
         <div className="w-full mt-4">
           {loading ? (
             <div className="text-center text-sm">Chargement des groupes...</div>
           ) : groups.length === 0 ? (
-            <div className="text-center text-sm text-gray-500">Aucun groupe n'a encore été créé.</div>
+            <div className="text-center text-sm text-amber-200/60">Aucun groupe n'a encore été créé.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {groups.map((g) => (
-                <div key={g.id} className="border-2 border-black rounded-lg p-4 flex flex-col gap-3">
+                // CHANGED: carte de groupe style "magical"
+                <div
+                  key={g.id}
+                  className={`rounded-lg p-4 flex flex-col gap-3 backdrop-blur-sm border-2 transition-colors ${currentGroupId === g.id ? 'bg-amber-200/10 border-amber-300' : 'bg-amber-50/5 border-amber-400'}`}
+                >
                   <div className="flex items-center justify-between">
-                    <div className="text-lg font-semibold">{g.name}</div>
-                    <div className="text-sm text-gray-600">{g.participants}/3</div>
+                    <div className="text-lg font-semibold text-amber-100">{g.name}</div>
+                    <div className="text-sm text-amber-200">{g.participants}/3</div>
                   </div>
                   <div className="flex flex-wrap gap-2 items-center">
                     {g.members && g.members.length > 0 ? (
                       g.members.map((m, idx) => (
                         <div key={`${m.id ?? "noid"}-${g.id}-${idx}`} className="flex items-center gap-2">
                           <ThickBorderCircle size={24} style={{ backgroundColor: "white" }} title={m.name} />
-                          <span className="text-sm">{m.name}</span>
+                          <span className="text-sm text-amber-100">{m.name}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-sm text-gray-500">Aucun participant</div>
+                      <div className="text-sm text-amber-200">Aucun participant</div>
                     )}
                   </div>
                   <div className="mt-2 flex justify-end">
-                    {/* Si on est déjà dans un autre groupe, on retire complètement les boutons 'Rejoindre' pour les autres groupes */}
-                    {currentGroupId !== null && currentGroupId !== g.id ? null : (
-                      <ThickBorderButton
-                        onClick={() => handleJoin(g.id)}
-                        disabled={
-                          (g.members?.length ?? 0) >= 3 ||
-                          joiningGroupId === g.id ||
-                          currentGroupId === g.id // empêcher de re-joindre le même groupe
-                        }
-                      >
-                        {joiningGroupId === g.id
-                          ? "Rejoindre..."
-                          : currentGroupId === g.id
-                            ? "Dans ce groupe"
-                            : (g.members?.length ?? 0) >= 3
-                              ? "Plein"
-                              : "Rejoindre"}
-                      </ThickBorderButton>
-                    )}
+                    {/* CHANGED: bouton rejoint style magique */}
+                    <ThickBorderButton
+                      onClick={() => handleJoin(g.id)}
+                      disabled={
+                        (g.members?.length ?? 0) >= 3 ||
+                        joiningGroupId === g.id ||
+                        currentGroupId === g.id
+                      }
+                      className="bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-900 hover:brightness-105"
+                    >
+                      {joiningGroupId === g.id
+                        ? "Rejoindre..."
+                        : currentGroupId === g.id
+                          ? "Dans ce groupe"
+                          : (g.members?.length ?? 0) >= 3
+                            ? "Plein"
+                            : "Rejoindre"}
+                    </ThickBorderButton>
                   </div>
                 </div>
               ))}
