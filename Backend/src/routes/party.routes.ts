@@ -76,7 +76,7 @@ router.post('/', (req, res) => partyController.createParty(req, res));
  * @openapi
  * /parties/{id}/start:
  *   post:
- *     summary: Start a party by setting its end date
+ *     summary: Start a party by setting its end date (timestamp in milliseconds)
  *     tags:
  *       - parties
  *     security:
@@ -95,8 +95,8 @@ router.post('/', (req, res) => partyController.createParty(req, res));
  *             type: object
  *             properties:
  *               endDate:
- *                 type: string
- *                 format: date-time
+ *                 type: integer
+ *                 description: Timestamp in milliseconds since epoch
  *     responses:
  *       200:
  *         description: Party started

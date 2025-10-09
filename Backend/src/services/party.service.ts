@@ -27,10 +27,11 @@ export class PartyService {
         });
     }
 
-    async startParty(partyId: number, endTime: Date): Promise<Party> {
+    async startParty(partyId: number, endDateTimestamp: number): Promise<Party> {
+        // store as BigInt (timestamp in ms)
         return this.prisma.party.update({
             where: { id: partyId },
-            data: { endTime },
+            data: { endDate: BigInt(endDateTimestamp) },
         });
     }
 }
