@@ -5,7 +5,8 @@ import ContextPopup from "../components/ui/ContextPopup";
 import MagicalQuestionMark from "../components/ui/MagicalQuestionMark";
 import { SOLO_CONTEXT } from "../constants/contextText";
 import GameStateService, { type GameStates } from "../services/gameState.service";
-import { readGameResults, type GameResults } from "../state/gameResults";
+import { readGameResults, reportGameResult } from "../state/gameResults";
+import carteLoire from "../assets/Carte_Loire.png";
 
 const INITIAL_GAMES_STATE: GameStates = {
   'heraldry-quiz': 'unvisited',
@@ -16,14 +17,14 @@ const INITIAL_GAMES_STATE: GameStates = {
   'chambord-enigma': 'unvisited'
 };
 
-// Positions des châteaux sur la carte de la Loire (approximatives)
+// Positions des châteaux sur la carte de la Loire (ajustées pour la nouvelle carte)
 const CASTLE_POSITIONS = {
-  'chambord-enigma': { x: 65, y: 45, title: 'Château de Chambord' },
-  'brissac-enigma': { x: 25, y: 65, title: 'Château de Brissac' },
-  'heraldry-quiz': { x: 45, y: 35, title: 'Blois - Héraldique' },
-  'puzzle': { x: 75, y: 55, title: 'Énigme d\'Amboise' },
-  'memory-loire': { x: 55, y: 25, title: 'Mémoire de Cheverny' },
-  'courrier-loire': { x: 35, y: 75, title: 'Courrier de Saumur' }
+  'chambord-enigma': { x: 58, y: 42, title: 'Château de Chambord' },
+  'brissac-enigma': { x: 22, y: 68, title: 'Château de Brissac' },
+  'heraldry-quiz': { x: 48, y: 38, title: 'Blois - Héraldique' },
+  'puzzle': { x: 68, y: 48, title: 'Énigme d\'Amboise' },
+  'memory-loire': { x: 52, y: 32, title: 'Mémoire de Cheverny' },
+  'courrier-loire': { x: 32, y: 72, title: 'Courrier de Saumur' }
 };
 
 const MagicalDashboard: React.FC = () => {
@@ -34,20 +35,22 @@ const MagicalDashboard: React.FC = () => {
   });
   const [contextText] = useState(SOLO_CONTEXT);
   const [gamesState, setGamesState] = useState<GameStates>(() => {
-    // Initialiser avec les résultats existants des jeux
+    // Load initial states from both storage systems
     const gameResults = readGameResults();
+    const storedStates = GameStateService.getStates();
     const initialState = { ...INITIAL_GAMES_STATE };
     
-    // Synchroniser les états depuis gameResults
+    // Merge states, preferring GameStateService values
     Object.entries(gameResults).forEach(([gameId, result]) => {
-      const status = result?.status;
-      if (status && status !== 'unvisited') {
-        GameStateService.setState(gameId, status);
+      if (storedStates[gameId]) {
+        initialState[gameId] = storedStates[gameId];
+      } else if (result?.status && result.status !== 'unvisited') {
+        initialState[gameId] = result.status;
+        GameStateService.setState(gameId, result.status);
       }
     });
-
-    const currentStates = GameStateService.getStates();
-    return Object.keys(currentStates).length > 0 ? currentStates : initialState;
+    
+    return initialState;
   });
 
   useEffect(() => {
@@ -68,9 +71,13 @@ const MagicalDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const handleGameClick = (game: keyof typeof INITIAL_GAMES_STATE) => {
-    // Si le jeu n'est pas déjà complété ou échoué, on le met en "in_progress"
+    // Set game to in_progress if it's unvisited and update game results
     if (gamesState[game] === 'unvisited') {
       GameStateService.setState(String(game), 'in_progress');
+      // Update game results to keep systems in sync
+      reportGameResult(game as 'heraldry-quiz' | 'puzzle' | 'memory-loire' | 'courrier-loire' | 'brissac-enigma' | 'chambord-enigma', 
+        { status: 'in_progress' }
+      );
     }
     navigate(`/${game}`);
   };
@@ -81,41 +88,13 @@ const MagicalDashboard: React.FC = () => {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1544830826-4ccc3bf5ceb1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwxfHxsb2lyZSUyMHZhbGxleSUyMG1lZGlldmFsJTIwbWFwfGVufDB8fHx8MTc1OTkzMTAyNnww&ixlib=rb-4.1.0&q=85)',
+          backgroundImage: `url(${carteLoire})`,
+          backgroundColor: '#f4e4bc' // Couleur de fond de secours en attendant le chargement de l'image
         }}
       />
       
-      {/* Overlay pour ajuster l'opacité et ajouter une texture */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 via-amber-800/10 to-stone-900/30" />
-      
-      {/* Particules magiques flottantes */}
-      <div className="absolute inset-0 pointer-events-none">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-yellow-300 rounded-full animate-pulse opacity-60"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
-      
-      {/* Rivière Loire stylisée */}
-      <div className="absolute inset-0 pointer-events-none">
-        <svg className="w-full h-full opacity-30" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path
-            d="M 10 60 Q 30 50 50 55 T 90 45"
-            stroke="#3b82f6"
-            strokeWidth="2"
-            fill="none"
-            className="animate-pulse"
-          />
-        </svg>
-      </div>
+      {/* Overlay léger pour améliorer la lisibilité */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-100/10 via-transparent to-stone-100/10" />
 
       {/* Menu latéral */}
       <ThickBorderBurgerMenu
@@ -139,14 +118,14 @@ const MagicalDashboard: React.FC = () => {
 
       {/* Titre de la carte */}
       <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="bg-gradient-to-r from-amber-100 to-amber-200 px-8 py-4 rounded-lg shadow-xl border-2 border-amber-600"
+        <div className="bg-white/90 backdrop-blur-sm px-8 py-4 rounded-lg shadow-xl border-2 border-stone-600"
              style={{
                clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
              }}>
-          <h1 className="text-2xl font-bold text-amber-900 font-serif text-center">
+          <h1 className="text-2xl font-bold text-stone-800 font-serif text-center">
             Carte Mystérieuse de la Loire
           </h1>
-          <p className="text-amber-700 text-center font-serif mt-1">
+          <p className="text-stone-600 text-center font-serif mt-1">
             Découvrez les secrets des châteaux...
           </p>
         </div>
@@ -165,11 +144,10 @@ const MagicalDashboard: React.FC = () => {
           />
         ))}
         
-        {/* Châteaux décoratifs supplémentaires (non cliquables) */}
-        <MagicalQuestionMark x={15} y={35} title="Lieu mystérieux" />
-        <MagicalQuestionMark x={85} y={25} title="Tour enchantée" />
-        <MagicalQuestionMark x={20} y={85} title="Grotte des farfadets" />
-        <MagicalQuestionMark x={80} y={75} title="Forêt magique" />
+        {/* Points d'intérêt supplémentaires sur la carte */}
+        <MagicalQuestionMark x={42} y={52} state="unvisited" title="Tours" />
+        <MagicalQuestionMark x={72} y={28} state="unvisited" title="Orléans" />
+        <MagicalQuestionMark x={28} y={42} state="unvisited" title="Angers" />
       </div>
       
       {/* Légende de la carte */}
@@ -179,18 +157,22 @@ const MagicalDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-gradient-to-r from-amber-200 to-amber-400 rounded-full border border-amber-600"></div>
             <span>À découvrir</span>
+            <span className="text-amber-600 ml-1">?</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-gradient-to-r from-emerald-300 to-emerald-500 rounded-full border border-emerald-600"></div>
             <span>Complété</span>
+            <span className="text-emerald-600 ml-1">✓</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-gradient-to-r from-red-300 to-red-500 rounded-full border border-red-600"></div>
             <span>Échoué</span>
+            <span className="text-red-600 ml-1">✗</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gradient-to-r from-red-300 to-red-500 rounded-full border border-red-600"></div>
+            <div className="w-4 h-4 bg-gradient-to-r from-orange-300 to-orange-500 rounded-full border border-orange-600"></div>
             <span>En cours</span>
+            <span className="text-orange-600 ml-1">⌛</span>
           </div>
         </div>
       </div>

@@ -40,7 +40,7 @@ function formatDuration(ms: number) {
 }
 
 const Puzzle: React.FC = () => {
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">(
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">(
     "unvisited"
   );
   const [score, setScore] = useState<number>(0);
@@ -73,6 +73,7 @@ const Puzzle: React.FC = () => {
     setRunning(true);
     setSolvedThisSession(false); // reset session flag on fresh mount
 
+    reportGameResult("puzzle", { status: "in_progress" });
     const results = readGameResults();
     setStatus(results.puzzle.status);
     setScore(results.puzzle.score);
@@ -118,6 +119,7 @@ const Puzzle: React.FC = () => {
     setElapsed(0);
     setRunning(true);
     setSolvedThisSession(false); // if reshuffle, hide key again until solved
+    reportGameResult("puzzle", { status: "in_progress" });
   };
 
   const FRAME_W = 640;

@@ -114,11 +114,12 @@ export default function MemoryLoire() {
   }, [running]);
 
   // Persistencia
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [finalScore, setFinalScore] = useState(0);
   const [codePart, setCodePart] = useState("");
   const [solvedThisSession, setSolvedThisSession] = useState(false);
   useEffect(() => {
+    reportGameResult("memory-loire", { status: "in_progress" });
     const s = readGameResults();
     setStatus(s["memory-loire"].status);
     setFinalScore(s["memory-loire"].score);
@@ -261,12 +262,12 @@ export default function MemoryLoire() {
           <button onClick={restart} className="memory-button">Recommencer</button>
         </div>
 
-        {/* Grid fija 4 × 10 */}
+        {/* Grille fixe 4 × 10 */}
         <div
           className="memory-grid"
           style={{
             gridTemplateColumns: `repeat(${COLS}, ${BASE_W}px)`,
-            gridAutoRows: `${BASE_H}px`,
+            gridTemplateRows: `repeat(${ROWS}, ${BASE_H}px)`,
             gap: `${GAP}px`,
           }}
         >

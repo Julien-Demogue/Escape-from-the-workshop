@@ -1,4 +1,5 @@
-type GameState = 'completed' | 'failed' | 'unvisited' | 'in_progress';
+import type { GameStatus } from '../state/gameResults';
+type GameState = GameStatus;
 
 interface GameStates {
   [key: string]: GameState;

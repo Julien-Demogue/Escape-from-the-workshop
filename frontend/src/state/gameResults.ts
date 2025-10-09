@@ -8,7 +8,7 @@ export type GameId =
   | "brissac-enigma"
   | "chambord-enigma";
 
-export type GameStatus = "completed" | "failed" | "unvisited";
+export type GameStatus = "completed" | "failed" | "unvisited" | "in_progress";
 
 export type GameResult = {
   status: GameStatus;
@@ -40,7 +40,7 @@ export const INITIAL_RESULTS: GameResults = {
 };
 
 const KEY = "gameResults";
-const EVT = "game-results-updated";
+const EVT = "game-results-updated" as const;
 
 export function readGameResults(): GameResults {
   const raw = localStorage.getItem(KEY);
@@ -68,10 +68,9 @@ export function reportGameResult(gameId: GameId, partial: Partial<GameResult>) {
   };
   writeGameResults(next);
 
-  // Synchroniser avec le GameStateService si le status est fourni
-  if (partial.status) {
-    GameStateService.setState(gameId, partial.status);
-  }
+  // Always sync with GameStateService
+  const status = partial.status || current[gameId].status;
+  GameStateService.setState(gameId, status);
 }
 
 export function onGameResultsChange(cb: (r: GameResults) => void) {

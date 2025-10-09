@@ -23,6 +23,7 @@ import MagicalDashboard from "./pages/MagicalDashboard";
 import MagicalChambordEnigmaFixed from "./pages/MagicalChambordEnigmaFixed";
 import MagicalChambordEnigma from "./pages/MagicalChambordEnigma";
 import MagicalAbout from "./pages/MagicalAbout";
+import MagicalPuzzle from "./pages/MagicalPuzzle";
 
 const App: React.FC = () => (
   <Routes>
@@ -40,7 +41,8 @@ const App: React.FC = () => (
     <Route path="/original-about" element={<About />} />
     <Route path="/original-chambord-enigma" element={<ChambordEnigma />} />
 
-    <Route path="/puzzle" element={<Puzzle />} />
+    <Route path="/puzzle" element={<MagicalPuzzle />} />
+    <Route path="/original-puzzle" element={<Puzzle />} />
     <Route path="/heraldry-quiz" element={<HeraldryQuiz />} />
     <Route path="/brissac-enigma" element={<MagicalBrissacEnigma />} />
     <Route path="/original-brissac-enigma" element={<BrissacEnigma />} />

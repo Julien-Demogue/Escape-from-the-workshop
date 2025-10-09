@@ -88,8 +88,17 @@ export default function BrissacEnigma() {
   // 0 = no hints, 1 = Caesar, 2 = shift 10, 3 = alphabet
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
 
+  // Update status when requesting hint
+  const updateHintLevel = (level: 0 | 1 | 2 | 3) => {
+    setHintLevel(level);
+    if (status === "unvisited") {
+      setStatus("in_progress");
+      reportGameResult("brissac-enigma", { status: "in_progress" });
+    }
+  };
+
   // persisted result + key gating
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
@@ -149,8 +158,12 @@ export default function BrissacEnigma() {
         codePart: codePartFor("brissac-enigma"), // 🔑 part du code pour ce jeu
       });
     } else {
-      // marquer échoué (optionnel)
-      reportGameResult("brissac-enigma", { status: "failed" });
+      // Si c'est la première tentative, marquer comme "in_progress"
+      if (status === "unvisited") {
+        reportGameResult("brissac-enigma", { status: "in_progress" });
+      } else {
+        reportGameResult("brissac-enigma", { status: "failed" });
+      }
     }
   }
 
@@ -158,12 +171,13 @@ export default function BrissacEnigma() {
     setValue("");
     setState("idle");
     setTries(0);
-    setHintLevel(0);
+    updateHintLevel(0);
     setSolvedThisSession(false);
   }
 
   function showHint() {
-    setHintLevel((h) => (h < 3 ? ((h + 1) as 0 | 1 | 2 | 3) : h));
+    const nextLevel = hintLevel < 3 ? ((hintLevel + 1) as 0 | 1 | 2 | 3) : hintLevel;
+    updateHintLevel(nextLevel);
   }
 
   return (
@@ -260,9 +274,19 @@ export default function BrissacEnigma() {
           </div>
         )}
 
-        <p style={{ marginTop: 12, color: "#6b7280" }}>
-          Tentatives : {tries} &nbsp;•&nbsp; Indices utilisés : {hintLevel}
-        </p>
+        {/* Status du jeu */}
+        <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, color: "#374151" }}>Statut du jeu</span>
+          <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
+            {status === "completed" ? "✓ Terminé" 
+             : status === "failed" ? "✗ Échoué"
+             : status === "in_progress" ? "⌛ En cours"
+             : "❓ Non commencé"}
+          </span>
+          <span style={{ color: "#6b7280" }}>
+            Tentatives : {tries} &nbsp;•&nbsp; Indices utilisés : {hintLevel}
+          </span>
+        </div>
       </div>
     </div>
   );

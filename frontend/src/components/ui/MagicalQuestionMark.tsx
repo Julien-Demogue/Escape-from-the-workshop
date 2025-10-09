@@ -27,9 +27,9 @@ const MagicalQuestionMark: React.FC<MagicalQuestionMarkProps> = ({
       icon: '✗'
     },
     in_progress: {
-      bg: 'bg-gradient-to-r from-red-300 to-red-500',
-      border: 'border-red-600',
-      glow: 'shadow-red-400/50',
+      bg: 'bg-gradient-to-r from-orange-300 to-orange-500',
+      border: 'border-orange-600',
+      glow: 'shadow-orange-400/50',
       icon: '⌛'
     },
     unvisited: {

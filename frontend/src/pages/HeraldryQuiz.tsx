@@ -114,7 +114,7 @@ export default function HeraldryQuiz() {
   const [runId, setRunId] = useState(0);
   const [locked, setLocked] = useState(false);
 
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
 
@@ -144,7 +144,8 @@ export default function HeraldryQuiz() {
     setElapsed(0);
     setRunning(true);
     setSolvedThisSession(false);
-
+    
+    reportGameResult("heraldry-quiz", { status: "in_progress" });
     const saved = readGameResults();
     setStatus(saved["heraldry-quiz"].status);
     setScore(saved["heraldry-quiz"].score);

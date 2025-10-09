@@ -143,7 +143,7 @@ export default function CourierLoire() {
   const [running, setRunning] = useState<boolean>(true);
 
   // Persistence (dashboard) + session gate for the key
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
@@ -191,6 +191,11 @@ export default function CourierLoire() {
     // If they change the route after validating, hide the key until they re-validate
     setSolvedThisSession(false);
     setRunning(true);
+    // Set game state to in_progress when user starts interacting
+    if (status === "unvisited") {
+      setStatus("in_progress");
+      reportGameResult("courrier-loire", { status: "in_progress" });
+    }
   }
 
   // Heuristic helpers
@@ -209,6 +214,11 @@ export default function CourierLoire() {
     }
     setRoute(ordered);
     setSolvedThisSession(false);
+    // Update status to in_progress when using the optimization feature
+    if (status === "unvisited") {
+      setStatus("in_progress");
+      reportGameResult("courrier-loire", { status: "in_progress" });
+    }
   }
   function resetAll() {
     setRoute(media.slice());
