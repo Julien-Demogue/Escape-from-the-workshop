@@ -34,7 +34,7 @@ const Register = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1>Login</h1>
+      <h1>Register</h1>
       <input
         name="email"
         type="text"
@@ -57,7 +57,7 @@ const Register = () => {
       >
         {loading ? "Loading..." : "Se connecter"}
       </button>
-      <a href="/login" className="text-blue-500 hover:underline mt-4">
+      <a href="/" className="text-blue-500 hover:underline mt-4">
         Déjà un compte ? Connectez-vous
       </a>
     </div>
