@@ -4,12 +4,10 @@ import ThickBorderBurgerMenu from "../components/ui/ThickBorderBurgerMenu";
 import ContextPopup from "../components/ui/ContextPopup";
 import MagicalQuestionMark from "../components/ui/MagicalQuestionMark";
 import { SOLO_CONTEXT } from "../constants/contextText";
+import GameStateService, { type GameStates } from "../services/gameState.service";
+import { readGameResults, type GameResults } from "../state/gameResults";
 
-interface GameState {
-  [key: string]: 'completed' | 'failed' | 'unvisited';
-}
-
-const INITIAL_GAMES_STATE: GameState = {
+const INITIAL_GAMES_STATE: GameStates = {
   'heraldry-quiz': 'unvisited',
   'puzzle': 'unvisited', 
   'memory-loire': 'unvisited',
@@ -35,9 +33,21 @@ const MagicalDashboard: React.FC = () => {
     return shown !== 'true';
   });
   const [contextText] = useState(SOLO_CONTEXT);
-  const [gamesState, setGamesState] = useState<GameState>(() => {
-    const saved = localStorage.getItem('gamesState');
-    return saved ? JSON.parse(saved) : INITIAL_GAMES_STATE;
+  const [gamesState, setGamesState] = useState<GameStates>(() => {
+    // Initialiser avec les résultats existants des jeux
+    const gameResults = readGameResults();
+    const initialState = { ...INITIAL_GAMES_STATE };
+    
+    // Synchroniser les états depuis gameResults
+    Object.entries(gameResults).forEach(([gameId, result]) => {
+      const status = result?.status;
+      if (status && status !== 'unvisited') {
+        GameStateService.setState(gameId, status);
+      }
+    });
+
+    const currentStates = GameStateService.getStates();
+    return Object.keys(currentStates).length > 0 ? currentStates : initialState;
   });
 
   useEffect(() => {
@@ -47,18 +57,20 @@ const MagicalDashboard: React.FC = () => {
   }, [showPopup]);
 
   useEffect(() => {
-    localStorage.setItem('gamesState', JSON.stringify(gamesState));
-  }, [gamesState]);
+    // Souscription aux changements d'état des jeux
+    const unsubscribe = GameStateService.subscribe((newStates) => {
+      setGamesState(newStates);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const navigate = useNavigate();
 
   const handleGameClick = (game: keyof typeof INITIAL_GAMES_STATE) => {
-    const currentLocation = window.location.pathname.slice(1);
-    if (currentLocation === game) {
-      setGamesState(prev => ({
-        ...prev,
-        [game]: Math.random() > 0.5 ? 'completed' : 'failed'
-      }));
+    // Si le jeu n'est pas déjà complété ou échoué, on le met en "in_progress"
+    if (gamesState[game] === 'unvisited') {
+      GameStateService.setState(String(game), 'in_progress');
     }
     navigate(`/${game}`);
   };
@@ -175,6 +187,10 @@ const MagicalDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-gradient-to-r from-red-300 to-red-500 rounded-full border border-red-600"></div>
             <span>Échoué</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gradient-to-r from-red-300 to-red-500 rounded-full border border-red-600"></div>
+            <span>En cours</span>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Jigsaw from "../components/Jigsaw";
 import type { JigsawHandle } from "../components/Jigsaw";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
+import GameStateService from '../services/gameState.service';
 import {
   codePartFor,
   reportGameResult,
@@ -100,6 +101,9 @@ const Puzzle: React.FC = () => {
 
     const newScore = computeScore(elapsedMs);
     const fragment = codePartFor("puzzle"); // "es"
+
+    // Met à jour l'état du jeu
+    GameStateService.setState('puzzle', 'completed');
 
     reportGameResult("puzzle", {
       status: "completed",

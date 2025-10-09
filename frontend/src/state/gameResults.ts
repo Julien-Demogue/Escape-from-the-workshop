@@ -58,6 +58,8 @@ export function writeGameResults(results: GameResults) {
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+import GameStateService from '../services/gameState.service';
+
 export function reportGameResult(gameId: GameId, partial: Partial<GameResult>) {
   const current = readGameResults();
   const next: GameResults = {
@@ -65,6 +67,11 @@ export function reportGameResult(gameId: GameId, partial: Partial<GameResult>) {
     [gameId]: { ...current[gameId], ...partial },
   };
   writeGameResults(next);
+
+  // Synchroniser avec le GameStateService si le status est fourni
+  if (partial.status) {
+    GameStateService.setState(gameId, partial.status);
+  }
 }
 
 export function onGameResultsChange(cb: (r: GameResults) => void) {

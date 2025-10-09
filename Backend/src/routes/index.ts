@@ -20,5 +20,7 @@ router.use('/groups', groupRoutes);
 router.use('/info', infoRoutes);
 router.use('/challenges', challengeRoutes);
 router.use('/messages', messageRoutes);
+router.use('/challenges', challengeRoutes);
+router.use('/messages', messageRoutes);
 
 export default router;

@@ -4,7 +4,7 @@ interface MagicalQuestionMarkProps {
   x: number;  // position en pourcentage de la largeur
   y: number;  // position en pourcentage de la hauteur
   onClick?: () => void;
-  state?: 'completed' | 'failed' | 'unvisited';
+  state?: 'completed' | 'failed' | 'unvisited' | 'in_progress';
   title?: string; // pour identifier le château/lieu
 }
 
@@ -25,6 +25,12 @@ const MagicalQuestionMark: React.FC<MagicalQuestionMarkProps> = ({
       border: 'border-red-600',
       glow: 'shadow-red-400/50',
       icon: '✗'
+    },
+    in_progress: {
+      bg: 'bg-gradient-to-r from-red-300 to-red-500',
+      border: 'border-red-600',
+      glow: 'shadow-red-400/50',
+      icon: '⌛'
     },
     unvisited: {
       bg: 'bg-gradient-to-r from-amber-200 to-amber-400',
