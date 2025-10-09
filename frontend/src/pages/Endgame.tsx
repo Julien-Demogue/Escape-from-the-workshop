@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-/** Props optionnelle : reçoit les valeurs lors de l’envoi du formulaire */
+/** Component props (code/comments in English, UI in French) */
 type Props = {
   onSubmit?: (data: { castle: string; book: string }) => void;
   successImageUrl?: string;
+  /** Fixed dashboard URL (default: "/dashboard") */
+  dashboardHref?: string;
 };
 
-/* ===== Réponses possibles ===== */
+/* ===== Accepted answers (flexible variants) ===== */
 const POSSIBLE_CASTLES = [
   "Château d’Ussé",
   "Chateau d’Usse",
@@ -45,7 +47,7 @@ function matchesAny(input: string, possibilities: string[]) {
   return possibilities.some((p) => normalize(p) === n);
 }
 
-/* — Fond étoilé — */
+/* — Starry background — */
 function Stars({ count = 48 }: { count?: number }) {
   const stars = useMemo(
     () =>
@@ -59,6 +61,7 @@ function Stars({ count = 48 }: { count?: number }) {
       })),
     [count]
   );
+
   return (
     <>
       <style>{`
@@ -71,7 +74,6 @@ function Stars({ count = 48 }: { count?: number }) {
           60% { opacity: 1; transform: rotateY(0deg) scale(1.05); }
           100% { transform: rotateY(0deg) scale(1); }
         }
-        /* Animación de cada chispa y halo */
         @keyframes spark {
           0%   { transform: translate(-50%, -50%) rotate(var(--deg)) translateX(0) scale(0.6); opacity: 1; }
           70%  { opacity: 1; }
@@ -102,14 +104,13 @@ function Stars({ count = 48 }: { count?: number }) {
   );
 }
 
-/* — Fuegos artificiales mágicos (mejorados) — */
+/* — Fireworks — */
 function Fireworks({ show }: { show: boolean }) {
   if (!show) return null;
 
-  // 6 explosiones, cada una con 24 chispas
   const bursts = Array.from({ length: 6 }).map((_, i) => ({
     id: i,
-    left: `${Math.random() * 80 + 10}%`,          // evita bordes
+    left: `${Math.random() * 80 + 10}%`,
     top: `${Math.random() * 50 + 10}%`,
     delay: Math.random() * 0.6,
     hue: Math.floor(Math.random() * 360),
@@ -121,7 +122,6 @@ function Fireworks({ show }: { show: boolean }) {
         const sparks = Array.from({ length: 24 });
         return (
           <div key={b.id} style={{ position: "absolute", left: b.left, top: b.top }}>
-            {/* Halo flash */}
             <div
               style={{
                 position: "absolute",
@@ -136,10 +136,9 @@ function Fireworks({ show }: { show: boolean }) {
                 transform: "translate(-50%, -50%)",
               }}
             />
-            {/* Chispas */}
             {sparks.map((_, i) => {
-              const deg = (360 / sparks.length) * i + Math.random() * 6 - 3; // ligera variación
-              const dist = 120 + Math.random() * 40; // px
+              const deg = (360 / sparks.length) * i + Math.random() * 6 - 3;
+              const dist = 120 + Math.random() * 40;
               const light = 65 + Math.random() * 15;
               const sat = 95;
               const alpha = 0.95;
@@ -159,7 +158,6 @@ function Fireworks({ show }: { show: boolean }) {
                     transform: "translate(-50%, -50%)",
                     animation: `spark ${900 + Math.random() * 500}ms cubic-bezier(.2,.7,.2,1) ${b.delay +
                       Math.random() * 0.2}s forwards`,
-                    // variables CSS para la trayectoria
                     // @ts-ignore
                     "--deg": `${deg}deg`,
                     "--dist": `${dist}px`,
@@ -174,19 +172,19 @@ function Fireworks({ show }: { show: boolean }) {
   );
 }
 
-/* — Composant principal — */
+/* — Main Component — */
 export default function EndgameSimple({
   onSubmit,
   successImageUrl = "https://cdn-images.dzcdn.net/images/cover/9351c308299ac0348b6808e935c7586c/500x500-000000-80-0-0.jpg",
+  dashboardHref = "/dashboard",
 }: Props) {
   const [castle, setCastle] = useState("");
   const [book, setBook] = useState("");
   const [status, setStatus] = useState<"idle" | "ok" | "ko">("idle");
-  const [celebrating, setCelebrating] = useState(false); // <-- controla los fuegos
+  const [celebrating, setCelebrating] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ castle?: string; book?: string }>({});
 
-  // Apaga los fuegos artificiales tras 2.5s
   useEffect(() => {
     if (status !== "ok") return;
     setCelebrating(true);
@@ -237,18 +235,30 @@ export default function EndgameSimple({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-50">
+      {/* Background and fireworks */}
       <Stars />
-      {/* El vignette va debajo; los fuegos tienen z-50 y quedan por encima */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_0%,rgba(0,0,0,.28)_70%)]" />
       <Fireworks show={celebrating} />
 
+      {/* Fixed dashboard button (top-left corner) */}
+      <div className="fixed left-4 top-4 z-[60]">
+        <a
+          href={dashboardHref}
+          className="rounded-lg border-2 border-amber-600/70 bg-white/90 px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-white transition shadow"
+          aria-label="Retour au tableau de bord"
+        >
+          ← Retour au tableau de bord
+        </a>
+      </div>
+
+      {/* Main content */}
       <div className="relative z-10 mx-auto max-w-xl px-4 py-16">
         <h1 className="mb-8 text-center font-serif text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_2px_12px_rgba(251,191,36,.35)]">
           Résolution du Mystère
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Château */}
+          {/* Castle input */}
           <div>
             <label htmlFor="castle" className="mb-2 block font-medium text-amber-100">
               Où se cache Farfadoux ?
@@ -268,7 +278,7 @@ export default function EndgameSimple({
             )}
           </div>
 
-          {/* Livre */}
+          {/* Book input */}
           <div>
             <label htmlFor="book" className="mb-2 block font-medium text-amber-100">
               Titre de l’ouvrage volé
@@ -288,7 +298,7 @@ export default function EndgameSimple({
             )}
           </div>
 
-          {/* Actions */}
+          {/* Action buttons */}
           <div className="flex items-center gap-3 pt-2">
             <button
               type="submit"
@@ -305,7 +315,7 @@ export default function EndgameSimple({
             </button>
           </div>
 
-          {/* Feedback */}
+          {/* Feedback + success image */}
           {msg && (
             <div
               className={`mt-4 rounded-lg border px-4 py-3 ${
