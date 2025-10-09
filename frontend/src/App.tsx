@@ -23,6 +23,7 @@ import MagicalDashboard from "./pages/MagicalDashboard";
 import MagicalChambordEnigma from "./pages/MagicalChambordEnigma";
 import MagicalAbout from "./pages/MagicalAbout";
 import MagicalPuzzle from "./pages/MagicalPuzzle";
+import EndGame from "./pages/Endgame";
 
 const App: React.FC = () => (
   <Routes>
@@ -51,6 +52,7 @@ const App: React.FC = () => (
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group/:id" element={<Group />} />
     <Route path="/websocket-test" element={<WebSocketTest />} />
+    <Route path="/end-game" element={<EndGame />} />
   </Routes>
 );
 
