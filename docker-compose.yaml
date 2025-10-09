@@ -21,6 +21,7 @@ services:
       PMA_HOST: mariadb
       PMA_PORT: 3306 
       UPLOAD_LIMIT: '512M'
+      TZ: Europe/Paris
     depends_on:
       - mariadb
 
@@ -37,6 +38,7 @@ services:
       DB_NAME: escape_game
       DATABASE_URL: "mysql://escape_user:escape_pass@mariadb:3306/escape_game"
       JWT_SECRET: "steve_le_poisson"
+      TZ: Europe/Paris
     depends_on:
       - mariadb
     ports:
@@ -46,6 +48,8 @@ services:
     image: node:23-alpine3.19
     volumes:
       - ./frontend:/app
+    environment:
+      - TZ: Europe/Paris
     command: >
       /bin/sh -c "cd app; npm i; npm run dev -- --host"
     ports:
@@ -58,6 +62,7 @@ services:
       - grafana_data:/var/lib/grafana
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
+      TZ: Europe/Paris
     depends_on:
       - mariadb
 
@@ -67,6 +72,8 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus:/etc/prometheus
+    environment:
+     TZ: Europe/Paris
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     depends_on:
@@ -77,6 +84,7 @@ services:
     container_name: mysqld-exporter
     environment:
       - "DATA_SOURCE_NAME=exporter:exporterpassword@tcp(mariadb:3306)/"
+      - TZ: Europe/Paris
     ports:
       - "9104:9104"
     depends_on:
