@@ -18,12 +18,12 @@ const PAIRS = 20;
 const ROWS = 4;
 const COLS = 10;
 
-// Tamaños base del tablero
+// Base board sizes
 const BASE_W = 90;
 const BASE_H = 130;
 const GAP = 10;
 
-// Menor delay para cartas incorrectas (más ágil)
+// Shorter delay for incorrect cards (snappier)
 const FLIP_BACK_DELAY_MS = 600;
 
 // ---- Scoring helpers ----
@@ -69,7 +69,7 @@ export default function MemoryLoire() {
     };
   }, []);
 
-  // Estrellas (decoración ligera)
+  // Stars (light decoration)
   const stars = useMemo(
     () =>
       Array.from({ length: 30 }).map((_, i) => ({
@@ -84,7 +84,7 @@ export default function MemoryLoire() {
     []
   );
 
-  // Mazo
+  // Deck
   const base = useMemo(
     () =>
       buildMemoryDeck({
@@ -166,7 +166,7 @@ export default function MemoryLoire() {
     setSolvedThisSession(false);
   }
 
-  // Click carta
+  // Card click
   function onCardClick(id: string) {
     if (lock) return;
     const idx = cards.findIndex((c) => c.id === id);
@@ -174,7 +174,7 @@ export default function MemoryLoire() {
     const card = cards[idx];
     if (card.revealed || card.matched) return;
 
-    // Voltea instantáneamente (el flip es sólo CSS transform -> muy rápido)
+  // Flip instantly (flip is only CSS transform -> very fast)
     const next = cards.slice();
     next[idx] = { ...card, revealed: true };
     setCards(next);

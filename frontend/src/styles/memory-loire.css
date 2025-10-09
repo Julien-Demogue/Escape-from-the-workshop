@@ -10,7 +10,7 @@
   overflow: hidden;
 }
 
-/* Estrellas: detrás del contenido + animaciones ligeras */
+/* Stars: behind content + subtle animations */
 .memory-stars {
   position: absolute;
   inset: 0;
@@ -30,7 +30,7 @@
   opacity: .85;
 }
 
-/* Cabecera (info) */
+/* Header (info) */
 .memory-title {
   font-size: 2.25rem;
   font-weight: bold;
@@ -54,7 +54,7 @@
   margin: 0 auto 8px;
 }
 
-/* Tarjeta contenedora */
+/* Container card */
 .memory-card {
   position: relative;
   width: 100%;
@@ -68,7 +68,7 @@
   z-index: 1;
 }
 
-/* Barra meta / controles */
+/* Meta bar / controls */
 .memory-meta {
   display: flex;
   justify-content: center;
@@ -92,7 +92,7 @@
   transform: translateY(-1px);
 }
 
-/* Grid 4×10 con tamaños base */
+/* 4×10 grid with base sizes */
 .memory-grid {
   display: grid;
   gap: 10px;
@@ -104,7 +104,7 @@
   -webkit-user-select: none;
 }
 
-/* Carta (optimizada) */
+/* Card (optimized) */
 .memory-card-item {
   position: relative;
   perspective: 1000px;
@@ -135,7 +135,7 @@
   overflow: hidden;
 }
 
-/* Cara frontal: simple y ligera */
+/* Front face: simple and lightweight */
 .memory-card-front {
   background: linear-gradient(135deg, #292524, #78350f);
   display: grid;
@@ -144,7 +144,7 @@
   color: rgba(254, 243, 199, 0.75);
 }
 
-/* Dorso: imagen + pie */
+/* Back: image + caption */
 .memory-card-back {
   transform: rotateY(180deg);
   background: #fff;
@@ -163,7 +163,7 @@
   overflow: hidden;
 }
 
-/* Estado + clave */
+/* Status + key */
 .memory-status {
   margin-top: 12px;
   padding: 10px;
@@ -199,7 +199,7 @@
   background: #fff;
 }
 
-/* Pequeños ajustes responsivos */
+/* Small responsive tweaks */
 @media (max-width: 1200px) {
   .memory-loire { padding: 1.25rem; }
 }

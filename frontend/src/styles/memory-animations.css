@@ -1,10 +1,10 @@
-/* Aparición y micro-movimientos */
+/* Fade-in & micro-movements */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Estrellas */
+/* Stars */
 @keyframes twinkle {
   0%, 100% { opacity: 0.35; transform: scale(1); }
   50%      { opacity: 0.9;  transform: scale(1.25); }
@@ -15,7 +15,7 @@
   100% { transform: translateY(0); }
 }
 
-/* Éxito / fallo de carta (ligeros) */
+/* Card success / fail (subtle) */
 @keyframes success-pulse {
   0%   { transform: scale(1) rotateY(180deg); }
   50%  { transform: scale(1.05) rotateY(180deg); box-shadow: 0 0 18px rgba(16,185,129,.35); }
@@ -29,7 +29,7 @@
   80%     { transform: rotateY(180deg) translate3d( 8px,0,0); }
 }
 
-/* Brillo suave al hacer match (barato) */
+/* Soft shine on match (lightweight) */
 @keyframes shine {
   0%   { background-position: -100% 0; }
   100% { background-position: 200% 0; }
@@ -49,7 +49,7 @@
   border-radius: 10px;
 }
 
-/* Profundidad/reflejo muy ligeros */
+/* Very light depth / subtle reflections */
 .memory-card-back,
 .memory-card-front {
   background-image: linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.04) 50%, transparent 50%);
