@@ -1,4 +1,3 @@
-// src/pages/MemoryLoire.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/memory-loire.css";
 import "../styles/memory-animations.css";
@@ -19,12 +18,13 @@ const PAIRS = 20;
 const ROWS = 4;
 const COLS = 10;
 
-// Tamaños base de carta y separación
+// Tamaños base del tablero
 const BASE_W = 90;
 const BASE_H = 130;
 const GAP = 10;
 
-const FLIP_BACK_DELAY_MS = 800;
+// Menor delay para cartas incorrectas (más ágil)
+const FLIP_BACK_DELAY_MS = 600;
 
 // ---- Scoring helpers ----
 function movesScore(m: number) {
@@ -34,8 +34,7 @@ function movesScore(m: number) {
   return Math.round(50 * (1 - t));
 }
 function timeScore(ms: number) {
-  const a = 180000,
-    b = 480000; // 3–8 min
+  const a = 180000, b = 480000; // 3–8 min
   if (ms <= a) return 50;
   if (ms >= b) return 0;
   const t = (ms - a) / (b - a);
@@ -70,7 +69,7 @@ export default function MemoryLoire() {
     };
   }, []);
 
-  // Efecto de estrellas mágicas (decorativo)
+  // Estrellas (decoración ligera)
   const stars = useMemo(
     () =>
       Array.from({ length: 30 }).map((_, i) => ({
@@ -85,7 +84,7 @@ export default function MemoryLoire() {
     []
   );
 
-  // Construcción del mazo
+  // Mazo
   const base = useMemo(
     () =>
       buildMemoryDeck({
@@ -175,6 +174,7 @@ export default function MemoryLoire() {
     const card = cards[idx];
     if (card.revealed || card.matched) return;
 
+    // Voltea instantáneamente (el flip es sólo CSS transform -> muy rápido)
     const next = cards.slice();
     next[idx] = { ...card, revealed: true };
     setCards(next);
@@ -193,7 +193,7 @@ export default function MemoryLoire() {
       setTimeout(() => {
         alert("Trop de coups ! Le jeu recommence 🔄");
         restart();
-      }, 200);
+      }, 150);
       return;
     }
 
@@ -209,7 +209,7 @@ export default function MemoryLoire() {
         setCards(after);
         setFlippedIds([]);
         setLock(false);
-      }, 200);
+      }, 180);
     } else {
       setTimeout(() => {
         const after = next.map((c) =>
@@ -224,7 +224,7 @@ export default function MemoryLoire() {
 
   return (
     <div className="memory-loire">
-      {/* Fondo de estrellas */}
+      {/* Estrellas */}
       <div className="memory-stars">
         {stars.map((star) => (
           <div key={star.id} className="memory-star" style={star.style} />
@@ -258,12 +258,10 @@ export default function MemoryLoire() {
           <span>
             Temps : <strong>{fmt(elapsed)}</strong>
           </span>
-          <button onClick={restart} className="memory-button">
-            Recommencer
-          </button>
+          <button onClick={restart} className="memory-button">Recommencer</button>
         </div>
 
-        {/* Grid fija 4 × 10 con tamaños base */}
+        {/* Grid fija 4 × 10 */}
         <div
           className="memory-grid"
           style={{
@@ -275,14 +273,14 @@ export default function MemoryLoire() {
           {cards.map((c) => (
             <div
               key={c.id}
-              className={`memory-card-item ${
-                c.revealed || c.matched ? "flipped" : ""
-              } ${c.matched ? "matched" : ""}`}
+              className={`memory-card-item ${c.revealed || c.matched ? "flipped" : ""} ${
+                c.matched ? "matched" : ""
+              }`}
               onClick={() => onCardClick(c.id)}
               role="button"
               aria-label={c.label}
             >
-              <div className="memory-card-inner">
+              <div className="memory-card-inner" aria-hidden="true">
                 <div className="memory-card-front">
                   <span>?</span>
                 </div>
