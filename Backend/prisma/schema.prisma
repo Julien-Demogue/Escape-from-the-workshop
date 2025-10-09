@@ -33,7 +33,7 @@ model Party {
   id          Int     @id @default(autoincrement())
   code        String
   adminUserId Int
-  endTime     BigInt? // timestamp in milliseconds
+  endTime     DateTime? // timestamp (MySQL TIMESTAMP / DATETIME), stored as DateTime in Prisma
 
   // relations
   adminUser User    @relation(fields: [adminUserId], references: [id])

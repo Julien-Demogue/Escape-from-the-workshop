@@ -68,7 +68,18 @@ export class PartyController {
     async startParty(req: Request, res: Response): Promise<void> {
         try {
             const partyId = parseInt(req.params.id, 10);
-            const { endTime } = req.body; // expected as timestamp (ms) number or numeric string
+            let endTime = Number(req.body.endTime); // expected as timestamp (ms) or (s) number or numeric string
+
+            if (isNaN(endTime)) {
+                res.status(400).json({ error: 'endTime is required and must be a number' });
+                return;
+            }
+
+            // If client sent seconds (e.g. 1759998850), convert to milliseconds
+            // heuristique : timestamps in seconds are ~1e9..1e10, ms are ~1e12..
+            if (endTime < 1e12) {
+                endTime = endTime * 1000;
+            }
 
             if (isNaN(partyId)) {
                 res.status(400).json({ error: 'Invalid party id' });
@@ -81,18 +92,8 @@ export class PartyController {
                 return;
             }
 
-            if (endTime === undefined || endTime === null) {
-                res.status(400).json({ error: 'endTime is required' });
-                return;
-            }
-
-            const parsed = typeof endTime === 'string' ? Number(endTime) : endTime;
-            if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
-                res.status(400).json({ error: 'Invalid endTime; expected integer timestamp (ms)' });
-                return;
-            }
-
-            party = await this.partyService.startParty(partyId, parsed); // service will convert to BigInt
+            // now endTime is milliseconds number; service will convert to Date
+            party = await this.partyService.startParty(partyId, endTime);
             res.status(200).json(party);
         } catch (error) {
             console.error(error);

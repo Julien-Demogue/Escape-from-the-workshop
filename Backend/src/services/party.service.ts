@@ -28,10 +28,12 @@ export class PartyService {
     }
 
     async startParty(partyId: number, endTimeTimestamp: number): Promise<Party> {
-        // store as BigInt (timestamp in ms)
+        // endTimeTimestamp is expected in milliseconds.
+        // Convert to a JS Date so Prisma writes a DATETIME/TIMESTAMP value.
+        const endDate = new Date(endTimeTimestamp);
         return this.prisma.party.update({
             where: { id: partyId },
-            data: { endTime: BigInt(endTimeTimestamp) },
+            data: { endTime: endDate },
         });
     }
 }
