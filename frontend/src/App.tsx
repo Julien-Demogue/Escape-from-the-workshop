@@ -25,7 +25,9 @@ import MagicalAbout from "./pages/MagicalAbout";
 const App: React.FC = () => (
   <Routes>
     {/* Nouvelles pages magiques */}
-    <Route path="/" element={<MagicalHome />} />
+    <Route path="/" element={<Login />} /> 
+    <Route path="/register" element={<Register />} />
+    <Route path="/home" element={<MagicalHome />} />
     <Route path="/dashboard" element={<MagicalDashboard />} />
     <Route path="/about" element={<MagicalAbout />} />
     <Route path="/chambord-enigma" element={<MagicalChambordEnigmaFixed />} />

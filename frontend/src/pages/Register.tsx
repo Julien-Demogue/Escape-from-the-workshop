@@ -24,7 +24,7 @@ const Register = () => {
       const hashedEmail = btoa(email)
       const response = await authService.register(hashedEmail, username, getRandomNiceColor())
       if (response) {
-        window.location.href = "/dashboard"
+        window.location.href = "/home"
       }
     } catch (error) {
       console.error("Login error:", error)

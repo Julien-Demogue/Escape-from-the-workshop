@@ -12,7 +12,7 @@ const Login = () => {
       const hashedEmail = btoa(email)
       const response = await authService.login(hashedEmail)
       if (response) {
-        window.location.href = "/dashboard"
+        window.location.href = "/home"
       }
     } catch (error) {
       console.error("Login error:", error)
