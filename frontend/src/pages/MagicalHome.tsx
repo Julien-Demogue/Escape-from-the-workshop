@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import partyService from "../services/partyService";
+import userService from "../services/userService"; // added import
 import MagicalButton from "../components/ui/MagicalButton";
 import MagicalInput from "../components/ui/MagicalInput";
 import MagicalCard from "../components/ui/MagicalCard";
@@ -49,7 +50,38 @@ const MagicalHome = () => {
         setJoining(false);
         return;
       }
-      // Naviguer vers la page de la partie (joueur participant)
+
+      const now = Date.now();
+      const end = party.endTime ? new Date(party.endTime).getTime() : null;
+
+      // Partie terminée
+      if (end && end < now) {
+        showToast("La partie est terminée.");
+        setJoining(false);
+        return;
+      }
+
+      // Partie en cours : il y a une endTime future -> vérifier si l'utilisateur a déjà un groupe
+      if (end && end > now) {
+        try {
+          const userGroup = await userService.getUserGroupInParty(party.id);
+          if (userGroup) {
+            setJoining(false);
+            navigate(`/dashboard`);
+          } else {
+            showToast("Impossible de rejoindre : la partie a déjà démarré et vous n'êtes pas inscrit dans un groupe.");
+            setJoining(false);
+          }
+        } catch (err) {
+          console.error("Erreur lors de la vérification du groupe utilisateur :", err);
+          showToast("Impossible de vérifier votre inscription pour cette partie. Réessayez plus tard.");
+          setJoining(false);
+        }
+        return;
+      }
+
+      // endTime === null -> partie pas encore commencée
+      setJoining(false);
       navigate(`/group/${party.id}`);
     } catch (err) {
       console.error("Erreur lors de la recherche de la quête :", err);
