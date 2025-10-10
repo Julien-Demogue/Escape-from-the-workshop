@@ -1,3 +1,4 @@
+// src/pages/MagicalPuzzle.tsx
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Jigsaw from "../components/Jigsaw";
@@ -10,6 +11,10 @@ import {
   readGameResults,
   onGameResultsChange,
 } from "../state/gameResults";
+
+// === INFO (DB) ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
 
 /* ---------- Assets (preload + fallback) ---------- */
 const IMG_URL =
@@ -154,7 +159,14 @@ function Fireworks({ show }: { show: boolean }) {
 }
 
 /* ---------- Main component ---------- */
+const PUZZLE_CHALLENGE_ID = 2; // ← id en BDD
+
 const MagicalPuzzle: React.FC = () => {
+  // === INFO (DB) ===
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+
   const [status, setStatus] = useState<
     "unvisited" | "completed" | "failed" | "in_progress"
   >("unvisited");
@@ -169,8 +181,8 @@ const MagicalPuzzle: React.FC = () => {
   const jigsawRef = useRef<JigsawHandle>(null);
 
   // responsive width (slightly smaller than antes)
-  const [width, setWidth] = useState<number>(520); // ↓ cap inferior
-  const ASPECT = 640 / 533;
+  const [width, setWidth] = useState<number>(520);
+  const height = Math.round(width * (533 / 640));
 
   useEffect(() => {
     GameStateService.setState("puzzle", "in_progress");
@@ -199,17 +211,16 @@ const MagicalPuzzle: React.FC = () => {
       setCodePart(r.puzzle.codePart);
     });
 
+    // preload image
     const img = new Image();
     img.onload = () => setReadyUrl(IMG_URL);
     img.onerror = () => setReadyUrl(FALLBACK_URL);
     img.src = IMG_URL;
 
-    // calc width responsive (un pelín más pequeño)
+    // responsive width
     const handleResize = () => {
       const vw = window.innerWidth;
-      // margen lateral total aproximado 80px
       const byWidth = Math.floor(vw - 80);
-      // cap máximo más bajo (↓ 560 -> 520)
       const w = Math.min(520, Math.max(300, byWidth));
       setWidth(w);
     };
@@ -219,6 +230,26 @@ const MagicalPuzzle: React.FC = () => {
     return () => {
       window.removeEventListener("resize", handleResize);
       unsub();
+    };
+  }, []);
+
+  // === fetch title/description from DB ===
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    challengeService
+      .getInfo(PUZZLE_CHALLENGE_ID)
+      .then((data) => {
+        if (!cancelled) {
+          setInfo(data);
+          // eslint-disable-next-line no-console
+          console.log("[MagicalPuzzle] info from DB:", data);
+        }
+      })
+      .catch((e) => !cancelled && setInfoError(e?.response?.data?.error ?? e.message))
+      .finally(() => !cancelled && setLoadingInfo(false));
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -246,8 +277,6 @@ const MagicalPuzzle: React.FC = () => {
     setSolvedThisSession(false);
   };
 
-  const height = Math.round(width * (533 / 640));
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-50">
       {/* magic background */}
@@ -262,20 +291,26 @@ const MagicalPuzzle: React.FC = () => {
       {/* fireworks on success */}
       <Fireworks show={solvedThisSession && status === "completed"} />
 
-      {/* header (slightly smaller) */}
+      {/* header — uses DB (fallback to static) */}
       <header className="relative z-10 mx-auto max-w-4xl px-4 pt-8 pb-3 text-center">
+        {loadingInfo && (
+          <p className="text-amber-100/80">Chargement de la description…</p>
+        )}
+        {infoError && (
+          <p className="text-red-200">Erreur : {infoError}</p>
+        )}
         <h1 className="font-serif text-2xl md:text-3xl font-bold text-amber-200 drop-shadow-[0_2px_10px_rgba(251,191,36,.3)]">
-          Puzzle Enchanté — Jardins de Villandry
+          {info?.title ?? "Puzzle Enchanté — Jardins de Villandry"}
         </h1>
-        <p className="mt-1 text-sm md:text-base text-amber-100/85">
-          Reconstitue l’image pour révéler la clé magique.
+        <p className="mt-1 text-sm md:text-base text-amber-100/85" style={{ whiteSpace: "pre-line" }}>
+          {info?.description ?? "Reconstitue l’image pour révéler la clé magique."}
         </p>
       </header>
 
       {/* main card (compact paddings) */}
       <main className="relative z-10 mx-auto max-w-4xl px-4 pb-10">
         <div className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-3 md:p-4 shadow-2xl">
-          {/* controls top-right (slightly smaller button) */}
+          {/* controls top-right */}
           <div className="flex justify-end mb-2">
             <button
               onClick={() => jigsawRef.current?.solveNow()}
@@ -306,7 +341,7 @@ const MagicalPuzzle: React.FC = () => {
             )}
           </div>
 
-          {/* metrics (compact) */}
+          {/* metrics */}
           <div className="mt-3 grid grid-cols-3 gap-2">
             <div className="rounded-lg border border-amber-200/40 bg-white/10 p-2 text-center">
               <div className="text-[11px] text-amber-100/80">Temps</div>
