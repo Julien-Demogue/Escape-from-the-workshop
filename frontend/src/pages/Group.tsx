@@ -8,9 +8,7 @@ import ThickBorderCircle from "../components/ui/ThickBorderCircle";
 import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService";
-import useToast from "../hooks/useToast";
 import { io, Socket } from 'socket.io-client';
-import GameStateService from "../services/gameState.service";
 
 interface Participant {
   id: number;
@@ -34,7 +32,6 @@ const Group: React.FC = () => {
   const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
-  const { showToast, Toast } = useToast();
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -46,7 +43,7 @@ const Group: React.FC = () => {
     if (!token) return;
 
     // Créer la connexion WebSocket
-    const newSocket = io('http://localhost:3000', {
+    const newSocket = io(import.meta.env.VITE_IP_BACK, {
       auth: { token },
       transports: ['websocket', 'polling']
     });
@@ -56,8 +53,6 @@ const Group: React.FC = () => {
     newSocket.on('connect', () => {
       setIsConnected(true);
       console.log('✅ Connected to WebSocket');
-
-      // Rejoindre la room de la party pour recevoir les mises à jour
       newSocket.emit('join-party-room', id);
     });
 
@@ -66,7 +61,6 @@ const Group: React.FC = () => {
       console.log('❌ Disconnected from WebSocket');
     });
 
-    // ✅ ÉCOUTER les mises à jour des groupes
     newSocket.on('group-updated', (data: {
       partyId: number,
       groupId: number,
@@ -74,18 +68,11 @@ const Group: React.FC = () => {
       action: 'user-joined' | 'user-left'
     }) => {
       console.log('📢 Group update received:', data);
-
-      // Mettre à jour le groupe dans l'état local
       setGroups(currentGroups =>
         currentGroups.map(g =>
           g.id === data.groupId ? data.group : g
         )
       );
-
-      // Optionnel : Toast de notification
-      if (data.action === 'user-joined') {
-        showToast(`Quelqu'un a rejoint ${data.group.name || `Groupe ${data.groupId}`}`);
-      }
     });
 
     newSocket.on('groups-created', (data: {
@@ -93,31 +80,31 @@ const Group: React.FC = () => {
       groups: PlayerGroup[]
     }) => {
       console.log('📢 New groups created:', data);
-
-      // Ajouter les nouveaux groupes à la liste existante
       setGroups(currentGroups => {
         const existingIds = currentGroups.map(g => g.id);
         const newGroups = data.groups.filter(g => !existingIds.includes(g.id));
-
         if (newGroups.length > 0) {
-          showToast(`🎉 ${newGroups.length} nouveau(x) groupe(s) créé(s) !`);
           return [...currentGroups, ...newGroups];
         }
-
         return currentGroups;
       });
+    });
+
+    // ✅ Handler simplifié pour party-started
+    newSocket.on('party-started', () => {
+      console.log('🚀 Party started - redirecting to dashboard');
+      navigate("/dashboard");
     });
 
     newSocket.on('user-watching-party', (data: { userId: number, socketId: string }) => {
       console.log(`👀 User ${data.userId} is now watching the party`);
     });
 
-    // Cleanup à la déconnexion
     return () => {
       newSocket.emit('leave-party-room', id);
       newSocket.disconnect();
     };
-  }, [id, showToast]);
+  }, [id, navigate]);
 
 
   useEffect(() => {
@@ -143,7 +130,6 @@ const Group: React.FC = () => {
 
         // Partie terminée
         if (end && end < now) {
-          showToast("La partie est terminée.");
           return;
         }
 
@@ -154,15 +140,10 @@ const Group: React.FC = () => {
             if (userGroup) {
               navigate(`/dashboard`);
             } else {
-              showToast("La partie est en cours, vous ne pouvez plus rejoindre un groupe. vous allez être redirigé vers l'accueil.");
-              // Wait few seconds
-              setTimeout(() => {
-                navigate(`/home`);
-              }, 3000);
+              navigate(`/home`);
             }
           } catch (err) {
             console.error("Erreur lors de la vérification du groupe utilisateur :", err);
-            showToast("Impossible de vérifier votre inscription pour cette partie. Réessayez plus tard.");
           }
           return;
         }
@@ -175,7 +156,7 @@ const Group: React.FC = () => {
       }
     };
     loadParty();
-  }, [id, navigate, showToast]);
+  }, [id, navigate]);
 
   useEffect(() => {
     const loadGroups = async () => {
@@ -418,8 +399,6 @@ const Group: React.FC = () => {
           )}
         </div>
       </div>
-
-      <Toast />
     </div>
   );
 };

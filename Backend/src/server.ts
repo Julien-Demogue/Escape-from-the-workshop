@@ -225,6 +225,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('party-started', async (data: { partyId: number }) => {
+    const roomName = `party-${data.partyId}`;
+
+    try {
+      console.log(`🚀 Party ${data.partyId} started by admin ${userId}`);
+
+      // Diffuser à tous les utilisateurs de la party qu'elle a démarré
+      io.to(roomName).emit('party-started', {
+        partyId: data.partyId,
+        startedBy: userId,
+        message: 'La partie a commencé ! Redirection vers le dashboard...'
+      });
+
+      console.log(`📢 Party start broadcasted to all users in party ${data.partyId}`);
+
+    } catch (error) {
+      console.error('❌ Error broadcasting party start:', error);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`❌ User ${userId} disconnected:`, socket.id);
   });

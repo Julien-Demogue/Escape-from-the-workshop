@@ -46,11 +46,21 @@ export class AuthController {
                 return;
             }
 
+            const existingUser = await this.userService.getByEmail(hashedEmail);
+            if (existingUser) {
+                res.status(409).json({ error: 'User already exists' });
+                return;
+            }
+
             const newUser = await this.userService.createUser(hashedEmail, username, color);
             res.status(201).json(newUser);
         }
-        catch (error) {
+        catch (error: any) {
             console.error(error);
+            if ((error as any).code === 'P2002') {
+                res.status(409).json({ error: 'User already exists' });
+                return;
+            }
             res.status(500).json({ error: 'Internal Server Error' });
         }
     }
