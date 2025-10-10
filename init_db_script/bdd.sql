@@ -133,14 +133,14 @@ VALUES (
     (
         6,
         '',
-        'Aucun indice trouvé =(',
+        '29.0"E',
         'Une plume enchantée s''agite : « Les rivières sont des routes, et les châteaux aiment la Loire. Suis son cours, mais ne t''éloigne jamais trop d''elle. »',
         100
     ),
     (
         7,
         '',
-        '29.0"E',
+        'Aucun indice trouvé =(',
         'Le cartographe dit : « Le centre n''est jamais au bord, mais là où les lignes s''équilibrent. Cherche l''équilibre des trois points… »',
         100
     );
