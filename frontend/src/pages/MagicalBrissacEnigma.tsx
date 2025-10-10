@@ -1,15 +1,24 @@
-import { useState } from "react";
+// src/pages/MagicalBrissacEnigma.tsx
+import { useEffect, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import "../styles/magical-home.css";
+
 import {
   codePartFor,
   reportGameResult,
 } from "../state/gameResults";
 
+// === INFO (BDD) ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
+
 /**
  * Magical Brissac Enigma — Version féerique et fonctionnelle ✨
+ * Récupère le titre et la description depuis la BDD (table `infos`)
+ * via GET /challenges/:challengeId/info
  */
 export default function MagicalBrissacEnigma() {
+  // --- game state ---
   const [answer, setAnswer] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -19,21 +28,64 @@ export default function MagicalBrissacEnigma() {
   const [currentHint, setCurrentHint] = useState(0);
   const [message, setMessage] = useState("");
 
+  // --- DB info state ---
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+
+  // challengeId pour Brissac (modifie si tu as un autre id en seed)
+  const BRISSAC_CHALLENGE_ID = 4;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+
+    challengeService
+      .getInfo(BRISSAC_CHALLENGE_ID)
+      .then((data) => {
+        if (cancelled) return;
+        setInfo(data);
+        // aide au debug si algoire: voir ce qui vient de l'API
+        // eslint-disable-next-line no-console
+        console.log("[BrissacEnigma] info from API:", data);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setInfoError(e?.response?.data?.error ?? e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInfo(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // --- puzzle constants ---
   const hints = [
     "🔮 Essaie de décaler chaque lettre dans l'alphabet...",
     "🔑 Le décalage est constant pour toutes les lettres.",
     "🧭 Essaie de décaler de 10 positions en arrière.",
     "👻 Le nom est lié à la légende d’un fantôme vert...",
   ];
-
+  const CIPHERTEXT = "NKWO FOBDO";
   const VALID_ANSWERS = ["DAME VERTE", "LA DAME VERTE"];
+
+  function normalize(s: string) {
+    return s
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-zA-Z]/g, "")
+      .toUpperCase();
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setAttempts((a) => a + 1);
-    const clean = answer.trim().toUpperCase();
+    const clean = normalize(answer);
 
-    if (VALID_ANSWERS.some((v) => v === clean)) {
+    if (VALID_ANSWERS.some((v) => normalize(v) === clean)) {
       const pts = Math.max(100 - hintsUsed * 20, 40);
       setScore(pts);
       setSolved(true);
@@ -69,16 +121,43 @@ export default function MagicalBrissacEnigma() {
 
   return (
     <div className="magical-container">
+      {/* étoilettes d’arrière-plan gérées par magical-home.css */}
       <div className="magical-content">
         <ThickBorderCloseButton />
 
-        <h1 className="magical-title">Énigme de Brissac</h1>
-        <p className="magical-subtitle">
-          Trouve le nom caché dans ce code mystérieux :
-        </p>
+        {/* Titre + description depuis BDD */}
+        <div className="magical-header">
+          {loadingInfo && (
+            <p className="magical-loading">Chargement de la description…</p>
+          )}
+          {infoError && (
+            <p className="magical-error-box">Erreur : {infoError}</p>
+          )}
+          {info ? (
+            <>
+              <h1 className="magical-title">{info.title}</h1>
+              {info.description && (
+                <p className="magical-subtitle" style={{ whiteSpace: "pre-line" }}>
+                  {info.description}
+                </p>
+              )}
+            </>
+          ) : (
+            !loadingInfo &&
+            !infoError && (
+              <>
+                <h1 className="magical-title">Énigme de Brissac</h1>
+                <p className="magical-subtitle">
+                  Trouve le nom caché dans ce code mystérieux :
+                </p>
+              </>
+            )
+          )}
+        </div>
 
+        {/* Riddle block */}
         <div className="magical-riddle">
-          <p className="magical-code">NKWO FOBDO</p>
+          <p className="magical-code">{CIPHERTEXT}</p>
           {currentHint > 0 && (
             <div className="magical-hints">
               {hints.slice(0, currentHint).map((hint, i) => (
@@ -90,6 +169,7 @@ export default function MagicalBrissacEnigma() {
           )}
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="magical-form">
           <input
             type="text"
@@ -125,11 +205,13 @@ export default function MagicalBrissacEnigma() {
           </div>
         </form>
 
+        {/* Stats */}
         <div className="magical-stats">
           <p>Tentatives : {attempts}</p>
           <p>Indices utilisés : {hintsUsed}</p>
         </div>
 
+        {/* Feedback */}
         {message && (
           <div
             className={`magical-message ${
@@ -140,6 +222,7 @@ export default function MagicalBrissacEnigma() {
           </div>
         )}
 
+        {/* Key on success */}
         {solved && (
           <div className="magical-key">
             <h2 className="magical-key-title">Clé mystique</h2>
