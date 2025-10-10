@@ -43,7 +43,7 @@ const Group: React.FC = () => {
     if (!token) return;
 
     // Créer la connexion WebSocket
-    const newSocket = io('http://localhost:3000', {
+    const newSocket = io(import.meta.env.IP_BACK, {
       auth: { token },
       transports: ['websocket', 'polling']
     });

@@ -78,7 +78,7 @@ const GroupAdmin: React.FC = () => {
     if (!token) return;
 
     // Créer la connexion WebSocket
-    const newSocket = io('http://localhost:3000', {
+    const newSocket = io(import.meta.env.IP_BACK, {
       auth: { token },
       transports: ['websocket', 'polling']
     });
@@ -516,13 +516,6 @@ const GroupAdmin: React.FC = () => {
       {/* ✅ NOUVEAU : Status WebSocket pour l'admin */}
       <div className="fixed top-8 left-8 z-20">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50/10 backdrop-blur-sm rounded-lg border border-amber-400/50">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
-            <span className="text-xs text-amber-200">
-              {isConnected ? 'Admin connecté' : 'Admin déconnecté'}
-            </span>
-          </div>
-
           {isConnected && connectedUsers.length > 0 && (
             <div className="px-3 py-1 bg-blue-50/10 backdrop-blur-sm rounded-lg border border-blue-400/50">
               <span className="text-xs text-blue-200">
