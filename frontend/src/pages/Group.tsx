@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom"; // <-- ajout useNavigate
@@ -8,6 +9,7 @@ import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService";
 import useToast from "../hooks/useToast";
+import GameStateService from "../services/gameState.service";
 
 interface Participant {
   id: number;
@@ -22,6 +24,7 @@ interface PlayerGroup {
 }
 
 const Group: React.FC = () => {
+  const KNOWN_GAME_KEYS = ['heraldry-quiz', 'puzzle', 'memory-loire', 'courrier-loire', 'brissac-enigma', 'chambord-enigma'];
   const { id } = useParams<{ id: string }>(); // attend l'id de la party
   const navigate = useNavigate(); // <-- nouveau
   const [partyCode, setPartyCode] = useState<string | null>(null);
@@ -42,6 +45,18 @@ const Group: React.FC = () => {
         setLoadingParty(true);
         const p = await partyService.getById(partyId);
         setPartyCode(p?.code ?? null);
+
+        // Si on entre dans une nouvelle party (différente de celle en localStorage) :
+        const prev = localStorage.getItem("partyId");
+        if (prev !== String(partyId)) {
+          // reset persisted game results and extra points
+          try { localStorage.removeItem("gameResults"); } catch { }
+          try { localStorage.removeItem("extraCompleted"); } catch { }
+          // reset in-memory GameStateService for known games
+          KNOWN_GAME_KEYS.forEach(k => {
+            try { GameStateService.setState(k, 'unvisited'); } catch { }
+          });
+        }
 
         const now = Date.now();
         const end = p?.endTime ? new Date(p.endTime).getTime() : null;
