@@ -173,7 +173,7 @@ VALUES (
     (
         4,
         'Château de Brissac — Le Nom Caché',
-        'Dans les souterrains de Brissac, un vieux moine copiste garde un manuscrit scellé : « Le farfadet a laissé un nom caché dans mes écrits… déchiffre-le, et tu trouveras un indice sur sa cachette. »\n\nSur le parchemin : NKWU FODDY.',
+        'Dans les souterrains de Brissac, un vieux moine copiste garde un manuscrit scellé : « Le farfadet a laissé un nom caché dans mes écrits… déchiffre-le, et tu trouveras un indice sur sa cachette. »',
         4
     ),
     (
