@@ -22,8 +22,9 @@ const Register = () => {
     try {
       setLoading(true)
       const hashedEmail = await hashEmail(email)
-      const response = await authService.register(hashedEmail, username, getRandomNiceColor())
-      if (response) {
+      const responseRegister = await authService.register(hashedEmail, username, getRandomNiceColor())
+      if (responseRegister) {
+        await authService.login(hashedEmail)
         window.location.href = "/home"
       }
     } catch (error) {
@@ -32,19 +33,19 @@ const Register = () => {
     }
   }
   async function hashEmail(email: string) {
-  // Encoder la chaîne en UTF-8
-  const encoder = new TextEncoder();
-  const data = encoder.encode(email);
+    // Encoder la chaîne en UTF-8
+    const encoder = new TextEncoder();
+    const data = encoder.encode(email);
 
-  // Calculer le hash avec SHA-256
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    // Calculer le hash avec SHA-256
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
 
-  // Convertir le hash en chaîne hexadécimale
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    // Convertir le hash en chaîne hexadécimale
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-  return hashHex;
-}
+    return hashHex;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
