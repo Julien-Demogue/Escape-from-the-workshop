@@ -8,6 +8,7 @@ import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService";
 import useToast from "../hooks/useToast";
+import { io, Socket } from 'socket.io-client';
 
 interface Participant {
   id: number;
@@ -22,8 +23,8 @@ interface PlayerGroup {
 }
 
 const Group: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // attend l'id de la party
-  const navigate = useNavigate(); // <-- nouveau
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [partyCode, setPartyCode] = useState<string | null>(null);
   const [groups, setGroups] = useState<PlayerGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,90 @@ const Group: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
   const { showToast, Toast } = useToast();
+
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Créer la connexion WebSocket
+    const newSocket = io('http://localhost:3000', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      console.log('✅ Connected to WebSocket');
+
+      // Rejoindre la room de la party pour recevoir les mises à jour
+      newSocket.emit('join-party-room', id);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+      console.log('❌ Disconnected from WebSocket');
+    });
+
+    // ✅ ÉCOUTER les mises à jour des groupes
+    newSocket.on('group-updated', (data: {
+      partyId: number,
+      groupId: number,
+      group: PlayerGroup,
+      action: 'user-joined' | 'user-left'
+    }) => {
+      console.log('📢 Group update received:', data);
+
+      // Mettre à jour le groupe dans l'état local
+      setGroups(currentGroups =>
+        currentGroups.map(g =>
+          g.id === data.groupId ? data.group : g
+        )
+      );
+
+      // Optionnel : Toast de notification
+      if (data.action === 'user-joined') {
+        showToast(`Quelqu'un a rejoint ${data.group.name || `Groupe ${data.groupId}`}`);
+      }
+    });
+
+    newSocket.on('groups-created', (data: {
+      partyId: number,
+      groups: PlayerGroup[]
+    }) => {
+      console.log('📢 New groups created:', data);
+
+      // Ajouter les nouveaux groupes à la liste existante
+      setGroups(currentGroups => {
+        const existingIds = currentGroups.map(g => g.id);
+        const newGroups = data.groups.filter(g => !existingIds.includes(g.id));
+
+        if (newGroups.length > 0) {
+          showToast(`🎉 ${newGroups.length} nouveau(x) groupe(s) créé(s) !`);
+          return [...currentGroups, ...newGroups];
+        }
+
+        return currentGroups;
+      });
+    });
+
+    newSocket.on('user-watching-party', (data: { userId: number, socketId: string }) => {
+      console.log(`👀 User ${data.userId} is now watching the party`);
+    });
+
+    // Cleanup à la déconnexion
+    return () => {
+      newSocket.emit('leave-party-room', id);
+      newSocket.disconnect();
+    };
+  }, [id, showToast]);
+
 
   useEffect(() => {
     const loadParty = async () => {
@@ -148,22 +233,19 @@ const Group: React.FC = () => {
   }, [id]);
 
   const handleJoin = async (groupId: number) => {
-    // Empêche de tenter de rejoindre un autre groupe si on est déjà dans un groupe
-    // Empêche aussi de rejoindre plusieurs fois le même groupe
     if (currentGroupId !== null && currentGroupId !== groupId) return;
-    if (currentGroupId === groupId) return; // <-- nouvelle garde: pas de re-join
+    if (currentGroupId === groupId) return;
     if (joiningGroupId) return;
+
     try {
-      // Optimistic update : on marque immédiatement le groupe courant pour désactiver/masquer les autres boutons
       setJoiningGroupId(groupId);
       setCurrentGroupId(groupId);
 
-      // Récupère l'id/nom utilisateur depuis localStorage pour ajout optimiste
+      // Optimistic update (code existant...)
       const stored = localStorage.getItem("userId");
       const meId = stored ? parseInt(stored, 10) : NaN;
       const meName = localStorage.getItem("username") ?? "Vous";
 
-      // Ajout optimiste du membre dans le groupe pour mise à jour UI immédiate
       if (!isNaN(meId)) {
         setGroups((current) =>
           current.map((g) => {
@@ -176,28 +258,46 @@ const Group: React.FC = () => {
         );
       }
 
+      // Appel API existant
       await groupService.joinGroup(groupId);
-      // rafraîchir les membres de ce groupe
+
+      // ✅ NOUVEAU : Émettre l'événement WebSocket
+      if (socket && id) {
+        socket.emit('user-joined-group', {
+          partyId: parseInt(id),
+          groupId: groupId
+        });
+      }
+
+      // Rafraîchissement des données existant...
       const membersRaw = await userService.getUsersByGroupId(groupId);
       const members = (membersRaw ?? []).map((m: any) => ({ id: m.id, name: m.name ?? m.username }));
+
       setGroups((current) =>
         current.map((g) => (g.id === groupId ? { ...g, members, participants: members.length } : g))
       );
+
       setError(null);
+
     } catch (err: any) {
+      // Gestion d'erreur existante...
       console.error(err);
-      // revert de l'optimistic update si échec
+
+      // Revert optimistic update
       const stored = localStorage.getItem("userId");
       const meId = stored ? parseInt(stored, 10) : NaN;
       setCurrentGroupId(null);
+
       if (!isNaN(meId)) {
-        // retirer le membre ajouté optimistiquement
         setGroups((current) =>
           current.map((g) =>
-            g.id === groupId ? { ...g, members: (g.members ?? []).filter((m) => m.id !== meId), participants: ((g.members ?? []).filter((m) => m.id !== meId)).length } : g
+            g.id === groupId
+              ? { ...g, members: (g.members ?? []).filter((m) => m.id !== meId), participants: ((g.members ?? []).filter((m) => m.id !== meId)).length }
+              : g
           )
         );
       }
+
       if (err?.response?.status === 400) {
         setError("Ce groupe est plein ou vous êtes déjà dans un groupe.");
       } else {
@@ -232,6 +332,15 @@ const Group: React.FC = () => {
 
       {/* content (au-dessus de l'overlay) */}
       <div className="relative z-10 w-full max-w-md flex flex-col items-center gap-4">
+
+        {/* ✅ NOUVEAU : Indicateur de connexion WebSocket */}
+        <div className="flex items-center gap-2 text-xs">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+          <span className="text-amber-200">
+            {isConnected ? 'Temps réel activé' : 'Temps réel déconnecté'}
+          </span>
+        </div>
+
         {/* CHANGED: style parchment pour le card montrant le code */}
         <ThickBorderCard className="bg-amber-50/5 backdrop-blur-sm border-amber-400 text-stone-900">
           {loadingParty ? "Chargement..." : partyCode ?? "—"}
@@ -286,7 +395,7 @@ const Group: React.FC = () => {
                         {joiningGroupId === g.id
                           ? "Rejoindre..."
                           : currentGroupId === g.id
-                            ? "Dans ce groupe"
+                            ? "Votre groupe"
                             : (g.members?.length ?? 0) >= 3
                               ? "Plein"
                               : "Rejoindre"}

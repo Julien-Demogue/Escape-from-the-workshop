@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService"; // <-- ajout
 import ThickBorderCard from "../components/ui/ThickBorderCard";
 import ThickBorderButton from "../components/ui/ThickBorderButton";
-import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
+import { io, Socket } from 'socket.io-client';
 import ThickBorderCircle from "../components/ui/ThickBorderCircle";
 import ThickBorderError from "../components/ui/ThickBorderError";
 import ThickBorderInput from "../components/ui/ThickBorderInput";
@@ -40,7 +40,6 @@ const GroupAdmin: React.FC = () => {
   const { showToast, Toast } = useToast();
   const [numberOfGroups, setNumberOfGroups] = useState("1");
   const [participantsPerGroup, setParticipantsPerGroup] = useState("1");
-  const [isPlayer, setIsPlayer] = useState(false);
   // use AdminGroup type
   const [groups, setGroups] = useState<AdminGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
@@ -54,6 +53,10 @@ const GroupAdmin: React.FC = () => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [creatingGroups, setCreatingGroups] = useState(false);
 
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectedUsers, setConnectedUsers] = useState<number[]>([]);
+
   // Nouveaux états pour gérer l'action "rejoindre"
   const [joiningGroupId, setJoiningGroupId] = useState<number | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<number | null>(null);
@@ -63,6 +66,76 @@ const GroupAdmin: React.FC = () => {
 
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!id) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Créer la connexion WebSocket
+    const newSocket = io('http://localhost:3000', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      console.log('✅ Admin connected to WebSocket');
+
+      // Rejoindre la room de la party pour recevoir les mises à jour
+      newSocket.emit('join-party-room', id);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+      setConnectedUsers([]);
+      console.log('❌ Admin disconnected from WebSocket');
+    });
+
+    // ✅ ÉCOUTER les mises à jour des groupes
+    newSocket.on('group-updated', (data: {
+      partyId: number,
+      groupId: number,
+      group: any,
+      action: 'user-joined' | 'user-left'
+    }) => {
+      console.log('📢 Admin received group update:', data);
+
+      // Mettre à jour le groupe dans l'état local
+      setGroups(currentGroups =>
+        currentGroups.map(g =>
+          g.id === data.groupId ? {
+            ...g,
+            members: data.group.members || [],
+            participants: data.group.participants || 0,
+            name: data.group.name || g.name
+          } : g
+        )
+      );
+
+      // Notification pour l'admin
+      if (data.action === 'user-joined') {
+        showToast(`✅ ${data.group.members?.slice(-1)[0]?.name || 'Quelqu\'un'} a rejoint ${data.group.name || `Groupe ${data.groupId}`}`);
+      } else {
+        showToast(`👋 Quelqu'un a quitté ${data.group.name || `Groupe ${data.groupId}`}`);
+      }
+    });
+
+    // ✅ ÉCOUTER qui regarde la party
+    newSocket.on('user-watching-party', (data: { userId: number, socketId: string }) => {
+      console.log(`👀 User ${data.userId} is watching the party`);
+      setConnectedUsers(prev => [...new Set([...prev, data.userId])]);
+    });
+
+    // Cleanup à la déconnexion
+    return () => {
+      newSocket.emit('leave-party-room', id);
+      newSocket.disconnect();
+    };
+  }, [id, showToast]);
 
   useEffect(() => {
     const fetchParty = async () => {
@@ -153,13 +226,6 @@ const GroupAdmin: React.FC = () => {
     loadGroups();
   }, [id]);
 
-  const handleMoveClick = (participant: Participant, fromGroupId: number) => {
-    setMovingParticipant({ participant, fromGroupId });
-    setShowMoveModal(true);
-    setReplacementMode(false);
-    setTargetGroupId(null);
-  };
-
   // Nouveau : supprimer tout le groupe (via service)
   const handleDeleteGroup = async (groupId: number) => {
     if (!confirm("Supprimer ce groupe ? Cette action est irréversible.")) return;
@@ -192,7 +258,6 @@ const GroupAdmin: React.FC = () => {
     }
   };
 
-  // Nouveau : rejoindre un groupe (utilise l'utilisateur connecté via l'API)
   const handleJoinGroup = async (groupId: number) => {
     // Prevent multiple simultaneous joins
     if (joiningGroupId) return;
@@ -212,6 +277,15 @@ const GroupAdmin: React.FC = () => {
     try {
       setJoiningGroupId(groupId);
       await groupService.joinGroup(groupId);
+
+      // ✅ NOUVEAU : Émettre l'événement WebSocket (même code que dans Group.tsx)
+      if (socket && id) {
+        socket.emit('user-joined-group', {
+          partyId: parseInt(id),
+          groupId: groupId
+        });
+      }
+
       // récupérer les membres mis à jour pour ce groupe
       const membersRaw = await userService.getUsersByGroupId(groupId);
       // normalize and dedupe members so UI can't get duplicates
@@ -347,21 +421,6 @@ const GroupAdmin: React.FC = () => {
     }
   };
 
-  const handleParticipantsPerGroupChange = (value: string) => {
-    const number = parseInt(value);
-    if (value === "") {
-      setParticipantsPerGroup("");
-    } else if (!isNaN(number)) {
-      if (number < 1) {
-        setParticipantsPerGroup("1");
-      } else if (number > 3) {
-        setParticipantsPerGroup("3");
-      } else {
-        setParticipantsPerGroup(number.toString());
-      }
-    }
-  };
-
   // Ajout : handler pour démarrer la partie (endDate = now + 1h)
   const handleStartParty = async () => {
     // NEW: prevent starting when there are no groups
@@ -420,6 +479,26 @@ const GroupAdmin: React.FC = () => {
           />
         ))}
         <div className="absolute inset-0 bg-gradient-to-t from-transparent via-amber-900/10 to-transparent" />
+      </div>
+
+      {/* ✅ NOUVEAU : Status WebSocket pour l'admin */}
+      <div className="fixed top-8 left-8 z-20">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50/10 backdrop-blur-sm rounded-lg border border-amber-400/50">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+            <span className="text-xs text-amber-200">
+              {isConnected ? 'Admin connecté' : 'Admin déconnecté'}
+            </span>
+          </div>
+
+          {isConnected && connectedUsers.length > 0 && (
+            <div className="px-3 py-1 bg-blue-50/10 backdrop-blur-sm rounded-lg border border-blue-400/50">
+              <span className="text-xs text-blue-200">
+                👥 {connectedUsers.length} utilisateur{connectedUsers.length > 1 ? 's' : ''} en ligne
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* fixed top-right controls (CHANGED: parchment style) */}
@@ -537,11 +616,19 @@ const GroupAdmin: React.FC = () => {
 
               try {
                 setCreatingGroups(true);
-                // createGroups crée le nombre de groupes demandés côté serveur
+
+                // ✅ Stocker les groupes existants avant création
+                const existingGroupIds = groups.map(g => g.id);
+
+                // Créer les groupes côté serveur
                 await groupService.createGroups(partyId, numGroups);
 
-                // recharger les groupes et MERGER les membres existants pour éviter qu'ils disparaissent
+                // Recharger les groupes et identifier les nouveaux
                 const svcGroups = await groupService.getByPartyId(partyId);
+                const newGroups = svcGroups.filter((g: any) => !existingGroupIds.includes(g.id));
+                const newGroupIds = newGroups.map((g: any) => g.id);
+
+                // Mettre à jour l'état local
                 setGroups(prev => svcGroups.map((g: any, idx: number) => {
                   const existing = prev.find(pg => pg.id === g.id);
                   const membersRaw = (g as any).members ?? existing?.members ?? [];
@@ -553,8 +640,20 @@ const GroupAdmin: React.FC = () => {
                     members
                   } as AdminGroup;
                 }));
+
+                // ✅ NOUVEAU : Émettre l'événement WebSocket pour diffuser la création
+                if (socket && newGroupIds.length > 0) {
+                  socket.emit('groups-created', {
+                    partyId: partyId,
+                    groupIds: newGroupIds
+                  });
+                  console.log('📤 Événement groups-created émis pour:', newGroupIds);
+                }
+
                 setSelectedGroupId(null);
                 setErrorMessage(null);
+                showToast(`✅ ${newGroupIds.length} nouveau(x) groupe(s) créé(s) !`);
+
               } catch (err) {
                 console.error(err);
                 setErrorMessage("Impossible de créer les groupes via le serveur.");
@@ -571,23 +670,31 @@ const GroupAdmin: React.FC = () => {
         {/* Affichage des groupes (CHANGED: cartes parchment) */}
         {groups.length > 0 && (
           <div className="w-full mt-8">
-            {/* Grille des groupes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {groups.map((group) => (
                 <div
                   key={group.id}
-                  className={`rounded-lg p-4 flex flex-col gap-3 transition-colors ${selectedGroupId === group.id ? 'bg-amber-200/10 border-amber-300' : 'bg-amber-50/5 border-amber-400'}`}
+                  className={`rounded-lg p-4 flex flex-col gap-3 transition-all duration-300 ${selectedGroupId === group.id
+                    ? 'bg-amber-200/10 border-amber-300 shadow-amber-300/20 shadow-lg'
+                    : 'bg-amber-50/5 border-amber-400'
+                    }`}
                   onClick={() => setSelectedGroupId(group.id)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-lg font-semibold text-amber-100">{group.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-lg font-semibold text-amber-100">{group.name}</div>
+                      {/* ✅ Indicateur de mise à jour temps réel */}
+                      {isConnected && (
+                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Temps réel"></div>
+                      )}
+                    </div>
                     <div className="text-sm text-amber-200">{group.participants}/3</div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 items-center min-h-[60px]">
                     {group.members && group.members.length > 0 ? (
                       group.members.map((member, mIdx) => (
-                        <div key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`} className="flex items-center gap-2">
+                        <div key={`${member.id ?? 'noid'}-${group.id}-${mIdx}`} className="flex items-center gap-2 animate-fadeIn">
                           <ThickBorderCircle size={24} style={{ backgroundColor: 'white', cursor: 'default' }} title={member.name} />
                           <span className="text-sm text-amber-100">{member.name}</span>
                         </div>
