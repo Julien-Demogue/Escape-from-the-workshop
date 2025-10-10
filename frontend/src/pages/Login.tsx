@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from "react"
 import authService from "../services/auth.service"
 
@@ -6,19 +7,50 @@ const Login = () => {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type?: 'info' | 'error' } | null>(null)
+
+  // Helper: show toast for 3s
+  function showToast(message: string, type: 'info' | 'error' = 'info') {
+    setToast({ message, type })
+    window.setTimeout(() => setToast(null), 3000)
+  }
+
   async function onSubmit() {
     try {
       setLoading(true)
       setError(null)
+
+      if (!email || email.trim().length === 0) {
+        showToast("Veuillez renseigner un email.", "error")
+        setLoading(false)
+        return
+      }
+
       const hashedEmail = await hashEmail(email)
       const response = await authService.login(hashedEmail)
       if (response) {
         window.location.href = "/home"
+      } else {
+        // si authService retourne falsy sans throw, afficher message générique
+        showToast("Échec de la connexion. Réessayez.", "error")
       }
-    } catch (error) {
-      console.error("Login error:", error)
+    } catch (err: any) {
+      console.error("Login error:", err)
+      // Tenter d'inférer le status si présent
+      const status = err?.response?.status
+      if (status === 401) {
+        showToast("Compte inexistant ou email incorrect.", "error")
+      } else if (status === 400) {
+        showToast("Email requis ou invalide.", "error")
+      } else {
+        showToast("Une erreur est survenue. Réessayez ✨", "error")
+      }
       setError("Une erreur est survenue. Réessayez ✨")
+    }
+    finally {
       setLoading(false)
+
     }
   }
 
@@ -97,6 +129,7 @@ const Login = () => {
           {error && <p className="text-red-200 text-sm">{error}</p>}
 
           <button
+            type="button"
             onClick={onSubmit}
             disabled={loading}
             className="rounded-lg bg-gradient-to-r from-amber-300 to-amber-500 text-amber-950 font-semibold py-2 shadow-[0_0_20px_rgba(255,220,150,.4)] hover:from-amber-200 hover:to-amber-400 active:translate-y-[1px] transition"
@@ -112,6 +145,18 @@ const Login = () => {
           </a>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 rounded-md shadow-md ${toast.type === "error" ? "bg-red-600 text-white" : "bg-amber-300 text-stone-900"
+            }`}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   )
 }
