@@ -1,3 +1,4 @@
+// src/pages/MagicalChambordEnigma.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import chambordBlason from "../assets/images/blason/blason-chambord.png";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
@@ -11,6 +12,10 @@ import {
   readGameResults,
   onGameResultsChange,
 } from "../state/gameResults";
+
+// === INFO (DB) ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
 
 const CORRECT_ANSWER = 300;
 const ACCEPT_TOLERANCE = 0;
@@ -28,9 +33,7 @@ const BANDS: TimeBand[] = [
 const MIN_SCORE_AFTER = 10;
 
 function scoreByTime(elapsedMs: number): number {
-  for (const b of BANDS) {
-    if (elapsedMs <= b.maxMs) return b.score;
-  }
+  for (const b of BANDS) if (elapsedMs <= b.maxMs) return b.score;
   return MIN_SCORE_AFTER;
 }
 
@@ -41,26 +44,30 @@ function formatDuration(ms: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function MagicalChambordEnigma() {
-  // Effet d'étoiles magiques
-  const stars = useMemo(() => 
-    Array.from({ length: 30 }).map((_, i) => ({
-      id: i,
-      style: {
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-        animationDelay: `${Math.random() * 3}s`,
-        animationDuration: `${1 + Math.random() * 2}s`,
-      }
-    }))
-  , []);
+const CHAMBORD_CHALLENGE_ID = 5; // ← id en BDD
 
+export default function MagicalChambordEnigma() {
+  // Decorative stars
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 30 }).map((_, i) => ({
+        id: i,
+        style: {
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          animationDelay: `${Math.random() * 3}s`,
+          animationDuration: `${1 + Math.random() * 2}s`,
+        },
+      })),
+    []
+  );
+
+  // Game states
   const [value, setValue] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "correct" | "wrong">("idle");
   const [tries, setTries] = useState(0);
   const [showHint, setShowHint] = useState(false);
 
-  // Persisted result & session gate for the key
   const [savedStatus, setSavedStatus] = useState<"unvisited" | "completed" | "failed">("unvisited");
   const [savedScore, setSavedScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
@@ -70,15 +77,13 @@ export default function MagicalChambordEnigma() {
   const startRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
-
-  // Tick only while running
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 250);
     return () => window.clearInterval(id);
   }, [running]);
 
-  // Load saved + subscribe
+  // Persisted results
   useEffect(() => {
     const saved = readGameResults();
     setSavedStatus(saved["chambord-enigma"].status);
@@ -90,6 +95,30 @@ export default function MagicalChambordEnigma() {
       setSavedScore(r["chambord-enigma"].score);
       setCodePart(r["chambord-enigma"].codePart);
     });
+  }, []);
+
+  // === INFO (DB) === title + description for this enigma
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    challengeService
+      .getInfo(CHAMBORD_CHALLENGE_ID)
+      .then((data) => {
+        if (!cancelled) {
+          setInfo(data);
+          // For quick debugging:
+          // eslint-disable-next-line no-console
+          console.log("[MagicalChambordEnigma] info from DB:", data);
+        }
+      })
+      .catch((e) => !cancelled && setInfoError(e?.response?.data?.error ?? e.message))
+      .finally(() => !cancelled && setLoadingInfo(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const parsed = useMemo(() => {
@@ -106,13 +135,13 @@ export default function MagicalChambordEnigma() {
 
     if (ok) {
       setRunning(false);
-      const score = scoreByTime(elapsed);
-      setSavedScore(score);
+      const pts = scoreByTime(elapsed);
+      setSavedScore(pts);
       setSolvedThisSession(true);
 
       reportGameResult("chambord-enigma", {
         status: "completed",
-        score: score,
+        score: pts,
         codePart: codePartFor("chambord-enigma"),
       });
     } else {
@@ -133,32 +162,46 @@ export default function MagicalChambordEnigma() {
 
   return (
     <div className="memory-loire">
+      {/* Stars */}
       <div className="memory-stars">
-        {stars.map(star => (
+        {stars.map((star) => (
           <div key={star.id} className="memory-star" style={star.style} />
         ))}
       </div>
 
       <ThickBorderCloseButton />
 
-      <h1 className="memory-title">Énigme 2 — Chambord</h1>
+      {/* Title / description from DB (fallbacks kept) */}
+      {loadingInfo && <p className="memory-info-loading">Chargement de la description…</p>}
+      {infoError && <p className="memory-info-error">Erreur : {infoError}</p>}
+
+      <h1 className="memory-title">{info?.title ?? "Énigme 2 — Chambord"}</h1>
 
       <div className="memory-content">
         <div className="memory-riddle">
-          <p className="memory-instructions">
-            « Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
-            Combien de fois suis-je représenté ? »
+          <p className="memory-instructions" style={{ whiteSpace: "pre-line" }}>
+            {info?.description ??
+              `« Je renais toujours des flammes. Cherche mon emblème dans les murs du château.
+Combien de fois suis-je représenté ? »`}
           </p>
-          
+
           {showHint && (
             <div className="memory-hint">
-              <p><strong>Indice :</strong> C'est la salamandre de François Ier.</p>
+              <p>
+                <strong>Indice :</strong> C'est la salamandre de François Ier.
+              </p>
               <img src={chambordBlason} alt="Blason" className="memory-image" />
             </div>
           )}
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); check(); }} className="memory-form">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            check();
+          }}
+          className="memory-form"
+        >
           <input
             type="number"
             value={value}

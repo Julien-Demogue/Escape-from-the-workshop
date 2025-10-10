@@ -41,7 +41,7 @@ const ContextPopup: React.FC<ContextPopupProps> = ({ isOpen, onClose, text }) =>
 
   return (
     <div
-      className="fixed inset-0 flex items-start justify-center pt-12 bg-black bg-opacity-50 z-50 p-4"
+      className="fixed inset-0 flex items-start justify-center pt-12 bg-black bg-opacity-50 z-100 p-4"
       aria-hidden={!isOpen}
     >
       {/* Increased top padding inside the card so the title isn't stuck to the top */}

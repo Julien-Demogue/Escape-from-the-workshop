@@ -45,5 +45,11 @@ export default {
     async deleteGroup(groupId: number): Promise<any> {
         const res = await api.delete(`/groups/${groupId}`);
         return res.data;
-    }
+    },
+
+    // Récupère la liste des challenges (identifiants/keys) déjà complétés par le groupe
+    async getCompletedChallenges(groupId: number): Promise<string[]> {
+        const res = await api.get<string[]>(`/groups/${groupId}/completed-challenges`);
+        return res.data;
+    },
 }
