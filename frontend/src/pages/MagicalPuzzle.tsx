@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import Jigsaw from "../components/Jigsaw";
 import type { JigsawHandle } from "../components/Jigsaw";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
-import GameStateService from '../services/gameState.service';
+import GameStateService from "../services/gameState.service";
 import {
   codePartFor,
   reportGameResult,
@@ -11,27 +11,25 @@ import {
   onGameResultsChange,
 } from "../state/gameResults";
 
-// Image preload with fallback
+/* ---------- Assets (preload + fallback) ---------- */
 const IMG_URL =
   "https://www.chateauvillandry.fr/wp-content/uploads/2022/01/chateauvillandry-vue-generale-2-credit-photo-f.paillet-scaled.jpg";
 const FALLBACK_URL =
   "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200&auto=format&fit=crop";
 
-// Score by elapsed time
+/* ---------- Scoring ---------- */
 const SCORING_TABLE: Array<{ maxMs: number; score: number }> = [
   { maxMs: 5 * 60 * 1000, score: 100 },
   { maxMs: 7 * 60 * 1000, score: 75 },
   { maxMs: 10 * 60 * 1000, score: 50 },
 ];
 const FALLBACK_SCORE = 25;
-
 function computeScore(elapsedMs: number) {
   for (const { maxMs, score } of SCORING_TABLE) {
     if (elapsedMs <= maxMs) return score;
   }
   return FALLBACK_SCORE;
 }
-
 function formatDuration(ms: number) {
   const totalSec = Math.floor(ms / 1000);
   const m = Math.floor(totalSec / 60);
@@ -39,8 +37,127 @@ function formatDuration(ms: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
+/* ---------- Background stars ---------- */
+function Stars({ count = 60 }: { count?: number }) {
+  const stars = Array.from({ length: count }).map((_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    size: 2 + Math.random() * 2,
+    delay: `${Math.random() * 3}s`,
+    dur: `${1.8 + Math.random() * 1.6}s`,
+  }));
+  return (
+    <>
+      <style>{`
+        @keyframes twinklePuzzle { 0%,100% { opacity:.25; transform:scale(1) } 50% { opacity:.9; transform:scale(1.2) } }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0">
+        {stars.map((s) => (
+          <div
+            key={s.id}
+            className="absolute rounded-full bg-amber-200"
+            style={{
+              left: s.left,
+              top: s.top,
+              width: s.size,
+              height: s.size,
+              animation: `twinklePuzzle ${s.dur} ease-in-out ${s.delay} infinite`,
+              boxShadow: "0 0 10px rgba(251,191,36,.35)",
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/* ---------- Fireworks on success ---------- */
+function Fireworks({ show }: { show: boolean }) {
+  if (!show) return null;
+  const bursts = Array.from({ length: 6 }).map((_, i) => ({
+    id: i,
+    left: `${10 + Math.random() * 80}%`,
+    top: `${15 + Math.random() * 50}%`,
+    delay: Math.random() * 0.6,
+    hue: Math.floor(Math.random() * 360),
+  }));
+
+  return (
+    <>
+      <style>{`
+        @keyframes sparkPuzzle {
+          0%   { transform: translate(-50%, -50%) rotate(var(--deg)) translateX(0) scale(.7); opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translate(-50%, -50%) rotate(var(--deg)) translateX(var(--dist)) scale(1); opacity: 0; }
+        }
+        @keyframes flashPuzzle {
+          0% { transform: scale(0); opacity: .9; }
+          100% { transform: scale(1.8); opacity: 0; }
+        }
+      `}</style>
+      <div className="fixed inset-0 z-[60] pointer-events-none">
+        {bursts.map((b) => {
+          const sparks = Array.from({ length: 24 });
+          return (
+            <div key={b.id} style={{ position: "absolute", left: b.left, top: b.top }}>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, hsla(${b.hue},100%,85%,.9), transparent 60%)`,
+                  filter: "blur(1px)",
+                  animation: `flashPuzzle 900ms ease-out ${b.delay}s forwards`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              />
+              {sparks.map((_, i) => {
+                const deg = (360 / sparks.length) * i + Math.random() * 6 - 3;
+                const dist = 120 + Math.random() * 40;
+                const light = 65 + Math.random() * 15;
+                const sat = 95;
+                const alpha = 0.95;
+                const size = 6 + Math.random() * 3;
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      width: size,
+                      height: size,
+                      borderRadius: 9999,
+                      background: `radial-gradient(circle, hsla(${b.hue},${sat}%,${light}%,${alpha}), transparent 70%)`,
+                      boxShadow: `0 0 10px hsla(${b.hue},${sat}%,${light}%,.7)`,
+                      transform: "translate(-50%, -50%)",
+                      animation: `sparkPuzzle ${900 + Math.random() * 500}ms cubic-bezier(.2,.7,.2,1) ${
+                        b.delay + Math.random() * 0.2
+                      }s forwards`,
+                      // @ts-ignore
+                      "--deg": `${deg}deg`,
+                      "--dist": `${dist}px`,
+                    } as React.CSSProperties}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/* ---------- Main component ---------- */
 const MagicalPuzzle: React.FC = () => {
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
+  const [status, setStatus] = useState<
+    "unvisited" | "completed" | "failed" | "in_progress"
+  >("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
@@ -51,22 +168,20 @@ const MagicalPuzzle: React.FC = () => {
   const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const jigsawRef = useRef<JigsawHandle>(null);
 
-  // Marquer le jeu comme "in_progress" au démarrage
+  // responsive width (slightly smaller than antes)
+  const [width, setWidth] = useState<number>(520); // ↓ cap inferior
+  const ASPECT = 640 / 533;
+
   useEffect(() => {
-    GameStateService.setState('puzzle', 'in_progress');
+    GameStateService.setState("puzzle", "in_progress");
   }, []);
 
-  // Tick only when running
   useEffect(() => {
     if (!running) return;
-    const id = window.setInterval(
-      () => setElapsed(Date.now() - startRef.current),
-      500
-    );
+    const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 500);
     return () => window.clearInterval(id);
   }, [running]);
 
-  // Mount: start timer, load saved, subscribe, preload image
   useEffect(() => {
     startRef.current = Date.now();
     setElapsed(0);
@@ -89,7 +204,22 @@ const MagicalPuzzle: React.FC = () => {
     img.onerror = () => setReadyUrl(FALLBACK_URL);
     img.src = IMG_URL;
 
-    return () => unsub();
+    // calc width responsive (un pelín más pequeño)
+    const handleResize = () => {
+      const vw = window.innerWidth;
+      // margen lateral total aproximado 80px
+      const byWidth = Math.floor(vw - 80);
+      // cap máximo más bajo (↓ 560 -> 520)
+      const w = Math.min(520, Math.max(300, byWidth));
+      setWidth(w);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      unsub();
+    };
   }, []);
 
   const handleSolved = () => {
@@ -101,9 +231,7 @@ const MagicalPuzzle: React.FC = () => {
     const newScore = computeScore(elapsedMs);
     const fragment = codePartFor("puzzle");
 
-    // Met à jour l'état du jeu
-    GameStateService.setState('puzzle', 'completed');
-
+    GameStateService.setState("puzzle", "completed");
     reportGameResult("puzzle", {
       status: "completed",
       score: newScore,
@@ -118,70 +246,113 @@ const MagicalPuzzle: React.FC = () => {
     setSolvedThisSession(false);
   };
 
+  const height = Math.round(width * (533 / 640));
+
   return (
-    <div className="relative min-h-screen bg-stone-100 flex items-center justify-center p-6">
-      <ThickBorderCloseButton />
-      <div>
-        <div className="flex justify-end mb-2">
-          <button
-            onClick={() => jigsawRef.current?.solveNow()}
-            className="px-3 py-1.5 rounded-lg border-2 border-stone-800 bg-white font-bold cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
-          >
-            Résoudre automatiquement
-          </button>
-        </div>
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-50">
+      {/* magic background */}
+      <Stars />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_0%,rgba(0,0,0,.28)_70%)]" />
 
-        {!readyUrl ? (
-          <div className="w-[640px] h-[533px] flex items-center justify-center rounded-xl bg-white shadow-lg">
-            Chargement de l'image…
-          </div>
-        ) : (
-          <Jigsaw
-            ref={jigsawRef}
-            imageUrl={readyUrl}
-            width={640}
-            onSolved={handleSolved}
-            onShuffle={restartTimer}
-          />
-        )}
+      {/* close */}
+      <div className="absolute left-3 top-3 z-20 scale-95">
+        <ThickBorderCloseButton />
+      </div>
 
-        {/* Status & key (French UI) */}
-        <div className="mt-4 p-3 border-2 border-stone-800 rounded-xl bg-white shadow-lg max-w-[640px]">
-          <div className="flex flex-wrap gap-3 items-center">
-            <span className="font-bold">Statut du jeu</span>
-            <span className="px-2 py-1 border-2 border-stone-600 rounded-lg">
-              {status === "completed"
-                ? "✓ Terminé"
-                : status === "failed"
-                ? "✗ Échoué"
-                : status === "in_progress"
-                ? "⌛ En cours"
-                : "? Non commencé"}
-            </span>
-            <span className="px-2 py-1 border-2 border-stone-600 rounded-lg">
-              Score : {score}
-            </span>
-            <span className="px-2 py-1 border-2 border-stone-600 rounded-lg">
-              Temps : {formatDuration(elapsed)}
-            </span>
+      {/* fireworks on success */}
+      <Fireworks show={solvedThisSession && status === "completed"} />
+
+      {/* header (slightly smaller) */}
+      <header className="relative z-10 mx-auto max-w-4xl px-4 pt-8 pb-3 text-center">
+        <h1 className="font-serif text-2xl md:text-3xl font-bold text-amber-200 drop-shadow-[0_2px_10px_rgba(251,191,36,.3)]">
+          Puzzle Enchanté — Jardins de Villandry
+        </h1>
+        <p className="mt-1 text-sm md:text-base text-amber-100/85">
+          Reconstitue l’image pour révéler la clé magique.
+        </p>
+      </header>
+
+      {/* main card (compact paddings) */}
+      <main className="relative z-10 mx-auto max-w-4xl px-4 pb-10">
+        <div className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-3 md:p-4 shadow-2xl">
+          {/* controls top-right (slightly smaller button) */}
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => jigsawRef.current?.solveNow()}
+              className="rounded-md border-2 border-amber-900 bg-gradient-to-r from-amber-300 to-amber-500 px-2.5 py-1.5 text-sm font-semibold text-amber-950 shadow-[0_10px_24px_-12px_rgba(0,0,0,.5)] hover:from-amber-200 hover:to-amber-400 active:translate-y-[1px] transition"
+              title="Résoudre automatiquement"
+            >
+              ✨ Résoudre auto
+            </button>
           </div>
 
+          {/* jigsaw frame */}
+          <div className="rounded-xl border-2 border-amber-800/60 bg-amber-50/10 p-2 shadow-inner grid place-items-center">
+            {!readyUrl ? (
+              <div
+                className="grid place-items-center rounded-lg bg-white/95 text-stone-700"
+                style={{ width, height }}
+              >
+                Chargement de l’image…
+              </div>
+            ) : (
+              <Jigsaw
+                ref={jigsawRef}
+                imageUrl={readyUrl}
+                width={width}
+                onSolved={handleSolved}
+                onShuffle={restartTimer}
+              />
+            )}
+          </div>
+
+          {/* metrics (compact) */}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-2 text-center">
+              <div className="text-[11px] text-amber-100/80">Temps</div>
+              <div className="text-lg font-extrabold text-amber-200">
+                {formatDuration(elapsed)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-2 text-center">
+              <div className="text-[11px] text-amber-100/80">Score</div>
+              <div className="text-lg font-extrabold text-amber-200">{score}</div>
+            </div>
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-2 text-center">
+              <div className="text-[11px] text-amber-100/80">Statut</div>
+              <div className="text-lg font-extrabold text-amber-200">
+                {status === "completed"
+                  ? "Terminé"
+                  : status === "failed"
+                  ? "Échoué"
+                  : status === "in_progress"
+                  ? "En cours"
+                  : "Non visité"}
+              </div>
+            </div>
+          </div>
+
+          {/* key */}
           {solvedThisSession && status === "completed" && codePart && (
-            <div className="mt-3">
+            <div className="mt-3 rounded-xl border-2 border-amber-900/70 bg-white/10 p-3">
               <div className="font-bold mb-1">Clé</div>
-              <div className="px-2.5 py-1.5 border-2 border-dashed border-stone-800 rounded-lg inline-block">
+              <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-1.5 text-amber-950 inline-block">
                 {codePart}
               </div>
             </div>
           )}
-        </div>
 
-        <div className="text-center mt-4">
-          <Link to="/dashboard" className="text-blue-600 hover:underline">
-            Retour au tableau de bord
-          </Link>
+          {/* back link */}
+          <div className="text-center mt-4">
+            <Link
+              to="/dashboard"
+              className="inline-block rounded-md border-2 border-amber-900 bg-white/80 px-3 py-1.5 text-sm font-semibold text-amber-950 hover:bg-white transition"
+            >
+              ← Retour au tableau de bord
+            </Link>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
