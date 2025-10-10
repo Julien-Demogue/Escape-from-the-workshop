@@ -1,57 +1,83 @@
 // src/pages/MagicalBrissacEnigma.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import "../styles/magical-home.css";
 
-import {
-  codePartFor,
-  reportGameResult,
-} from "../state/gameResults";
-
-// === INFO (BDD) ===
 import challengeService from "../services/challengeService";
+import groupService from "../services/groupService";
 import type { Info } from "../services/infoService";
 
+import { reportGameResult, type GameId } from "../state/gameResults";
+
 /**
- * Magical Brissac Enigma — Version féerique et fonctionnelle ✨
- * Récupère le titre et la description depuis la BDD (table `infos`)
- * via GET /challenges/:challengeId/info
+ * Enigma Brissac — conectado a BDD (usando sólo endpoints existentes)
+ * - Lee título/descr. desde `infos` (getInfo).
+ * - Si el grupo YA lo completó -> bloquea y muestra FLAG + reward (clé).
+ * - Si validas correcto:
+ *    • obtiene FLAG y REWARD reales del challenge (getById),
+ *    • marca en BDD isCompleted=1 para el grupo (completeChallenge),
+ *    • bloquea y muestra FLAG + score + clé (reward),
+ *    • publica el resultado en el store local para el dashboard.
  */
+
+const GAME_KEY: GameId = "brissac-enigma";
+const CHALLENGE_ID = 4;
+
+const HINTS = [
+  "🔮 Essaie de décaler chaque lettre dans l'alphabet...",
+  "🔑 Le décalage est constant pour toutes les lettres.",
+  "🧭 Essaie de décaler de 10 positions en arrière.",
+  "👻 Le nom est lié à la légende d’un fantôme vert...",
+];
+
+const CIPHERTEXT = "NKWO FOBDO";
+const VALID_ANSWERS = ["DAME VERTE", "LA DAME VERTE"];
+
+function normalize(s: string) {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z]/g, "")
+    .toUpperCase();
+}
+
+function computeScoreFromHints(hintsUsed: number) {
+  return Math.max(100 - hintsUsed * 20, 40);
+}
+
 export default function MagicalBrissacEnigma() {
-  // --- game state ---
+  // --- juego/UI ---
   const [answer, setAnswer] = useState("");
-  const [attempts, setAttempts] = useState(0);
+  const [attemptsLocal, setAttemptsLocal] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
-  const [score, setScore] = useState(0);
-  const [codePart, setCodePart] = useState("");
+  const [score, setScore] = useState<number | null>(null);
+
+  const [flag, setFlag] = useState("");     // FLAG real desde BDD
+  const [reward, setReward] = useState(""); // REWARD (clé) real desde BDD
   const [solved, setSolved] = useState(false);
   const [currentHint, setCurrentHint] = useState(0);
   const [message, setMessage] = useState("");
 
-  // --- DB info state ---
+  // --- info (BDD) ---
   const [info, setInfo] = useState<Info | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [infoError, setInfoError] = useState<string | null>(null);
 
-  // challengeId pour Brissac (modifie si tu as un autre id en seed)
-  const BRISSAC_CHALLENGE_ID = 4;
+  // --- control de equipo / polling ---
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // título/descripcion desde infos
   useEffect(() => {
     let cancelled = false;
     setLoadingInfo(true);
 
     challengeService
-      .getInfo(BRISSAC_CHALLENGE_ID)
+      .getInfo(CHALLENGE_ID)
       .then((data) => {
-        if (cancelled) return;
-        setInfo(data);
-        // aide au debug si algoire: voir ce qui vient de l'API
-        // eslint-disable-next-line no-console
-        console.log("[BrissacEnigma] info from API:", data);
+        if (!cancelled) setInfo(data);
       })
       .catch((e) => {
-        if (cancelled) return;
-        setInfoError(e?.response?.data?.error ?? e.message);
+        if (!cancelled) setInfoError(e?.response?.data?.error ?? e.message);
       })
       .finally(() => {
         if (!cancelled) setLoadingInfo(false);
@@ -62,70 +88,123 @@ export default function MagicalBrissacEnigma() {
     };
   }, []);
 
-  // --- puzzle constants ---
-  const hints = [
-    "🔮 Essaie de décaler chaque lettre dans l'alphabet...",
-    "🔑 Le décalage est constant pour toutes les lettres.",
-    "🧭 Essaie de décaler de 10 positions en arrière.",
-    "👻 Le nom est lié à la légende d’un fantôme vert...",
-  ];
-  const CIPHERTEXT = "NKWO FOBDO";
-  const VALID_ANSWERS = ["DAME VERTE", "LA DAME VERTE"];
+  // si el grupo YA lo resolvió, bloquear y mostrar flag + reward
+  useEffect(() => {
+    let cancelled = false;
 
-  function normalize(s: string) {
-    return s
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/[^a-zA-Z]/g, "")
-      .toUpperCase();
-  }
+    async function checkGroupCompletion() {
+      const storedGroup = localStorage.getItem("groupId");
+      const groupId = storedGroup ? parseInt(storedGroup, 10) : NaN;
+      if (Number.isNaN(groupId)) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
+      try {
+        const completed = await groupService.getCompletedChallenges(groupId);
+        if (Array.isArray(completed) && completed.includes(GAME_KEY)) {
+          // ya resuelto → leer flag y reward, bloquear
+          const ch = await challengeService.getById(CHALLENGE_ID);
+          if (cancelled) return;
+          setSolved(true);
+          setFlag(ch.flag || "");
+          setReward(ch.reward || "");
+          setMessage("✅ Ce défi a déjà été résolu par ton équipe.");
+          reportGameResult(GAME_KEY, {
+            status: "completed",
+            codePart: ch.reward || "", // la clé para el enigma final
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    checkGroupCompletion();
+
+    // polling para detectar resolución por otro integrante
+    if (!pollRef.current) {
+      pollRef.current = setInterval(checkGroupCompletion, 5000);
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      cancelled = true;
+    };
+  }, []);
+
+  // submit
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAttempts((a) => a + 1);
-    const clean = normalize(answer);
+    if (solved) return;
 
-    if (VALID_ANSWERS.some((v) => normalize(v) === clean)) {
-      const pts = Math.max(100 - hintsUsed * 20, 40);
-      setScore(pts);
+    setAttemptsLocal((a) => a + 1);
+
+    const clean = normalize(answer);
+    const isOk = VALID_ANSWERS.some((v) => normalize(v) === clean);
+
+    if (!isOk) {
+      setMessage("❌ Pas tout à fait... essaie encore !");
+      return;
+    }
+
+    const pts = computeScoreFromHints(hintsUsed);
+    setScore(pts);
+
+    try {
+      // 1) obtener FLAG y REWARD reales del challenge
+      const ch = await challengeService.getById(CHALLENGE_ID);
+      const flagReal = ch.flag || "";
+      const rewardReal = ch.reward || "";
+      setFlag(flagReal);
+      setReward(rewardReal);
+
+      // 2) marcar en BDD isCompleted=1 para el grupo
+      const storedGroup = localStorage.getItem("groupId");
+      const groupId = storedGroup ? parseInt(storedGroup, 10) : NaN;
+      if (!Number.isNaN(groupId)) {
+        await groupService.completeChallenge(groupId, CHALLENGE_ID);
+      }
+
+      // 3) actualizar store local para UI/Dashboard (clave = reward)
+      reportGameResult(GAME_KEY, {
+        status: "completed",
+        score: pts,          // hoy no se persiste en BDD (no hay endpoint), pero se muestra
+        codePart: rewardReal // para enigma final
+      });
+
       setSolved(true);
       setMessage("✨ Bravo ! Tu as percé le secret de Brissac !");
-      const fragment = codePartFor("brissac-enigma");
-      setCodePart(fragment);
-      reportGameResult("brissac-enigma", {
-        status: "completed",
-        score: pts,
-        codePart: fragment,
-      });
-    } else {
-      setMessage("❌ Pas tout à fait... essaie encore !");
+    } catch (err) {
+      // si algo falla, no marcamos como resuelto
+      console.warn("Brissac submit failed:", err);
+      setMessage("⚠️ Erreur réseau. Réessaie dans un instant.");
     }
   };
 
   const handleHint = () => {
-    if (currentHint < hints.length) {
+    if (solved) return;
+    if (currentHint < HINTS.length) {
       setCurrentHint((n) => n + 1);
       setHintsUsed((n) => n + 1);
     }
   };
 
-  const resetGame = () => {
+  const resetLocal = () => {
+    if (solved) return; // no se puede reiniciar si ya está resuelto por el equipo
     setAnswer("");
-    setAttempts(0);
-    setHintsUsed(0);
-    setScore(0);
-    setSolved(false);
     setCurrentHint(0);
+    setHintsUsed(0);
     setMessage("");
+    // attemptsLocal queda como histórico local de sesión
   };
 
   return (
     <div className="magical-container">
-      {/* étoilettes d’arrière-plan gérées par magical-home.css */}
       <div className="magical-content">
         <ThickBorderCloseButton />
 
-        {/* Titre + description depuis BDD */}
+        {/* Header con BDD */}
         <div className="magical-header">
           {loadingInfo && (
             <p className="magical-loading">Chargement de la description…</p>
@@ -155,12 +234,12 @@ export default function MagicalBrissacEnigma() {
           )}
         </div>
 
-        {/* Riddle block */}
+        {/* Enigma */}
         <div className="magical-riddle">
           <p className="magical-code">{CIPHERTEXT}</p>
           {currentHint > 0 && (
             <div className="magical-hints">
-              {hints.slice(0, currentHint).map((hint, i) => (
+              {HINTS.slice(0, currentHint).map((hint, i) => (
                 <p key={i} className="magical-hint">
                   {hint}
                 </p>
@@ -169,7 +248,7 @@ export default function MagicalBrissacEnigma() {
           )}
         </div>
 
-        {/* Form */}
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="magical-form">
           <input
             type="text"
@@ -191,27 +270,27 @@ export default function MagicalBrissacEnigma() {
               type="button"
               className="magical-button"
               onClick={handleHint}
-              disabled={solved || currentHint >= hints.length}
+              disabled={solved || currentHint >= HINTS.length}
             >
-              Indice {currentHint}/{hints.length}
+              Indice {currentHint}/{HINTS.length}
             </button>
             <button
               type="button"
               className="magical-button"
-              onClick={resetGame}
+              onClick={resetLocal}
+              disabled={solved}
             >
               Réinitialiser
             </button>
           </div>
         </form>
 
-        {/* Stats */}
+        {/* Stats locales */}
         <div className="magical-stats">
-          <p>Tentatives : {attempts}</p>
           <p>Indices utilisés : {hintsUsed}</p>
         </div>
 
-        {/* Feedback */}
+        {/* Mensajes */}
         {message && (
           <div
             className={`magical-message ${
@@ -222,12 +301,27 @@ export default function MagicalBrissacEnigma() {
           </div>
         )}
 
-        {/* Key on success */}
+        {/* Resultado final */}
         {solved && (
           <div className="magical-key">
-            <h2 className="magical-key-title">Clé mystique</h2>
-            <div className="magical-key-code">{codePart}</div>
-            <div className="magical-score">Score : {score}</div>
+            <h2 className="magical-key-title">Résultat</h2>
+
+            {/* FLAG (lo que pediste mostrar explícitamente) */}
+            <div className="magical-key-code" style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, marginRight: 8 }}>FLAG :</span>{flag}
+            </div>
+
+            {/* Clé (reward) para el enigma final */}
+            {reward && (
+              <div className="magical-key-code" style={{ marginBottom: 8 }}>
+                <span style={{ fontWeight: 700, marginRight: 8 }}>Clé :</span>{reward}
+              </div>
+            )}
+
+            {/* Score local (como no hay endpoint/columna aún, no se persiste en BDD) */}
+            {score !== null && (
+              <div className="magical-score">Score : {score}</div>
+            )}
           </div>
         )}
       </div>

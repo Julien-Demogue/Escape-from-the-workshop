@@ -248,11 +248,15 @@ export default function CourierLoire() {
     return () => window.clearInterval(id);
   }, [running]);
 
-  // Persistencia + clave
+  // Persistencia + clé + reward/flag
   const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
+
+  // NUEVO: estado local para mostrar lo leído de BDD
+  const [reward, setReward] = useState<string>("");
+  const [flag, setFlag] = useState<string>("");
 
   useEffect(() => {
     const saved = readGameResults();
@@ -324,7 +328,8 @@ export default function CourierLoire() {
     setSolvedThisSession(false);
   }
 
-  function validateRoute() {
+  // Hacerlo async para poder esperar la API
+  async function validateRoute() {
     const elapsedMs = Date.now() - startRef.current;
     const finalScore = computeCourierScore(dist, elapsedMs);
     setRunning(false);
@@ -333,11 +338,31 @@ export default function CourierLoire() {
     if (dist <= SUCCESS_DISTANCE_CAP) {
       setScore(finalScore);
       setSolvedThisSession(true);
-      reportGameResult("courrier-loire", {
-        status: "completed",
-        score: finalScore,
-        codePart: codePartFor("courrier-loire"),
-      });
+
+      // === Recuperar FLAG + REWARD reales desde BDD (como en Brissac) ===
+      try {
+        const ch = await challengeService.getById(COURIER_CHALLENGE_ID); // id = 6 en tu BDD
+        const rewardReal = ch.reward || codePartFor("courrier-loire"); // fallback por si acaso
+        const flagReal = ch.flag || "";
+
+        setReward(rewardReal);
+        setFlag(flagReal);
+
+        reportGameResult("courrier-loire", {
+          status: "completed",
+          score: finalScore,
+          codePart: rewardReal, // publier la clé real
+        });
+      } catch (e) {
+        // Si el fetch falla, caemos al reward cacheado para no romper el flujo
+        const fallback = codePartFor("courrier-loire");
+        setReward(fallback);
+        reportGameResult("courrier-loire", {
+          status: "completed",
+          score: finalScore,
+          codePart: fallback,
+        });
+      }
     } else {
       setSolvedThisSession(false);
       reportGameResult("courrier-loire", { status: "failed" });
@@ -454,11 +479,12 @@ export default function CourierLoire() {
               </span>
             </div>
 
-            {solvedThisSession && status === "completed" && codePart && (
+            {/* Mostrar la clé siempre que esté completado; preferimos el reward leído de BDD y, si no, el codePart cacheado */}
+            {status === "completed" && (reward || codePart) && (
               <div className="mt-3">
                 <div className="font-bold mb-1">Clé</div>
                 <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-2 text-amber-950">
-                  {codePart}
+                  {reward || codePart}
                 </div>
               </div>
             )}

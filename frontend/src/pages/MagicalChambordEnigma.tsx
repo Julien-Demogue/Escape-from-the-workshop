@@ -73,6 +73,10 @@ export default function MagicalChambordEnigma() {
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
 
+  // NUEVO: estado local para mostrar reward/flag reales desde BDD
+  const [reward, setReward] = useState<string>("");
+  const [flag, setFlag] = useState<string>("");
+
   // Timer
   const startRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState<number>(0);
@@ -109,7 +113,6 @@ export default function MagicalChambordEnigma() {
       .then((data) => {
         if (!cancelled) {
           setInfo(data);
-          // For quick debugging:
           // eslint-disable-next-line no-console
           console.log("[MagicalChambordEnigma] info from DB:", data);
         }
@@ -126,7 +129,7 @@ export default function MagicalChambordEnigma() {
     return Number.isFinite(n) ? n : null;
   }, [value]);
 
-  function check() {
+  async function check() {
     if (parsed === null) return;
     const ok = Math.abs(parsed - CORRECT_ANSWER) <= ACCEPT_TOLERANCE;
 
@@ -139,11 +142,29 @@ export default function MagicalChambordEnigma() {
       setSavedScore(pts);
       setSolvedThisSession(true);
 
-      reportGameResult("chambord-enigma", {
-        status: "completed",
-        score: pts,
-        codePart: codePartFor("chambord-enigma"),
-      });
+      // === Recuperar FLAG + REWARD reales desde BDD (como en los otros juegos) ===
+      try {
+        const ch = await challengeService.getById(CHAMBORD_CHALLENGE_ID); // id = 5
+        const rewardReal = ch.reward || codePartFor("chambord-enigma"); // fallback si algo falla
+        const flagReal = ch.flag || "";
+
+        setReward(rewardReal);
+        setFlag(flagReal);
+
+        reportGameResult("chambord-enigma", {
+          status: "completed",
+          score: pts,
+          codePart: rewardReal, // publicar la clé real
+        });
+      } catch {
+        const fallback = codePartFor("chambord-enigma");
+        setReward(fallback);
+        reportGameResult("chambord-enigma", {
+          status: "completed",
+          score: pts,
+          codePart: fallback,
+        });
+      }
     } else {
       reportGameResult("chambord-enigma", { status: "failed" });
     }
@@ -198,7 +219,7 @@ Combien de fois suis-je représenté ? »`}
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            check();
+            void check();
           }}
           className="memory-form"
         >
@@ -244,10 +265,20 @@ Combien de fois suis-je représenté ? »`}
               <>
                 <h2>Félicitations !</h2>
                 <div className="memory-score">Score : {savedScore}</div>
-                {codePart && (
+
+                {/* Mostrar la clé siempre que esté completado; preferimos reward de BDD y si no, codePart */}
+                {(reward || codePart) && (
                   <div className="memory-key">
                     <div className="memory-key-label">Clé</div>
-                    <div className="memory-key-code">{codePart}</div>
+                    <div className="memory-key-code">{reward || codePart}</div>
+                  </div>
+                )}
+
+                {/* (Opcional) Mostrar FLAG si te interesa en esta UI */}
+                {flag && (
+                  <div className="memory-key" style={{ marginTop: 8 }}>
+                    <div className="memory-key-label">FLAG</div>
+                    <div className="memory-key-code">{flag}</div>
                   </div>
                 )}
               </>

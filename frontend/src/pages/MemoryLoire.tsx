@@ -52,6 +52,8 @@ function fmt(ms: number) {
 
 export default function MemoryLoire() {
   // === INFO (BDD) === Rivau — “Les Familles des Blasons” (challengeId = 3)
+  const CHALLENGE_ID = 3;
+
   const [info, setInfo] = useState<Info | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [infoError, setInfoError] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export default function MemoryLoire() {
     let cancelled = false;
     setLoadingInfo(true);
     challengeService
-      .getInfo(3)
+      .getInfo(CHALLENGE_ID)
       .then((data) => !cancelled && setInfo(data))
       .catch((e) => !cancelled && setInfoError(e?.response?.data?.error ?? e.message))
       .finally(() => !cancelled && setLoadingInfo(false));
@@ -118,6 +120,11 @@ export default function MemoryLoire() {
   const [finalScore, setFinalScore] = useState(0);
   const [codePart, setCodePart] = useState("");
   const [solvedThisSession, setSolvedThisSession] = useState(false);
+
+  // NUEVO: estado local para reward/flag leídos desde BDD
+  const [reward, setReward] = useState<string>("");
+  const [flag, setFlag] = useState<string>("");
+
   useEffect(() => {
     reportGameResult("memory-loire", { status: "in_progress" });
     const s = readGameResults();
@@ -133,7 +140,7 @@ export default function MemoryLoire() {
 
   // Win
   useEffect(() => {
-    if (cards.length && cards.every((c) => c.matched)) {
+    async function handleWin() {
       setWon(true);
       const ms = Date.now() - startRef.current;
       setRunning(false);
@@ -141,11 +148,34 @@ export default function MemoryLoire() {
       const sc = totalScore(moves, ms);
       setFinalScore(sc);
       setSolvedThisSession(true);
-      reportGameResult("memory-loire", {
-        status: "completed",
-        score: sc,
-        codePart: codePartFor("memory-loire"),
-      });
+
+      // === Recuperar FLAG + REWARD reales desde BDD (como en los otros juegos) ===
+      try {
+        const ch = await challengeService.getById(CHALLENGE_ID); // id = 3
+        const rewardReal = ch.reward || codePartFor("memory-loire"); // fallback si algo falla
+        const flagReal = ch.flag || "";
+
+        setReward(rewardReal);
+        setFlag(flagReal);
+
+        reportGameResult("memory-loire", {
+          status: "completed",
+          score: sc,
+          codePart: rewardReal, // publicar la clé real
+        });
+      } catch {
+        const fallback = codePartFor("memory-loire");
+        setReward(fallback);
+        reportGameResult("memory-loire", {
+          status: "completed",
+          score: sc,
+          codePart: fallback,
+        });
+      }
+    }
+
+    if (cards.length && cards.every((c) => c.matched)) {
+      void handleWin();
     }
   }, [cards, moves]);
 
@@ -175,7 +205,7 @@ export default function MemoryLoire() {
     const card = cards[idx];
     if (card.revealed || card.matched) return;
 
-  // Flip instantly (flip is only CSS transform -> very fast)
+    // Flip instantly (flip is only CSS transform -> very fast)
     const next = cards.slice();
     next[idx] = { ...card, revealed: true };
     setCards(next);
@@ -311,10 +341,11 @@ export default function MemoryLoire() {
           <span className="memory-pill">Temps : {fmt(elapsed)}</span>
         </div>
 
-        {solvedThisSession && status === "completed" && codePart && (
+        {/* Mostrar la clé siempre que el juego esté completado; preferimos reward de BDD y si no, codePart */}
+        {status === "completed" && (reward || codePart) && (
           <div className="memory-key">
             <div className="memory-key-label">Clé</div>
-            <div className="memory-key-box">{codePart}</div>
+            <div className="memory-key-box">{reward || codePart}</div>
           </div>
         )}
       </div>

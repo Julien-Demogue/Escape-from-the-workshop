@@ -174,6 +174,10 @@ const MagicalPuzzle: React.FC = () => {
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
 
+  // NUEVO: estado local para reward/flag desde la BDD
+  const [reward, setReward] = useState<string>("");
+  const [flag, setFlag] = useState<string>("");
+
   const startRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
@@ -253,21 +257,42 @@ const MagicalPuzzle: React.FC = () => {
     };
   }, []);
 
-  const handleSolved = () => {
+  // Hacemos async para poder leer la BDD al completar
+  const handleSolved = async () => {
     const elapsedMs = Date.now() - startRef.current;
     setRunning(false);
     setElapsed(elapsedMs);
     setSolvedThisSession(true);
 
     const newScore = computeScore(elapsedMs);
-    const fragment = codePartFor("puzzle");
+    setScore(newScore);
 
-    GameStateService.setState("puzzle", "completed");
-    reportGameResult("puzzle", {
-      status: "completed",
-      score: newScore,
-      codePart: fragment,
-    });
+    // === Recuperar FLAG + REWARD reales desde BDD (como en los otros juegos) ===
+    try {
+      const ch = await challengeService.getById(PUZZLE_CHALLENGE_ID); // id = 2
+      const rewardReal = ch.reward || codePartFor("puzzle"); // fallback por si acaso
+      const flagReal = ch.flag || "";
+
+      setReward(rewardReal);
+      setFlag(flagReal);
+
+      GameStateService.setState("puzzle", "completed");
+      reportGameResult("puzzle", {
+        status: "completed",
+        score: newScore,
+        codePart: rewardReal, // publicar la clé real
+      });
+    } catch {
+      const fallback = codePartFor("puzzle");
+      setReward(fallback);
+
+      GameStateService.setState("puzzle", "completed");
+      reportGameResult("puzzle", {
+        status: "completed",
+        score: newScore,
+        codePart: fallback,
+      });
+    }
   };
 
   const restartTimer = () => {
@@ -367,12 +392,22 @@ const MagicalPuzzle: React.FC = () => {
             </div>
           </div>
 
-          {/* key */}
-          {solvedThisSession && status === "completed" && codePart && (
+          {/* key — mostrar siempre que esté completado; preferimos reward de BDD y, si no, codePart */}
+          {status === "completed" && (reward || codePart) && (
             <div className="mt-3 rounded-xl border-2 border-amber-900/70 bg-white/10 p-3">
               <div className="font-bold mb-1">Clé</div>
               <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-1.5 text-amber-950 inline-block">
-                {codePart}
+                {reward || codePart}
+              </div>
+            </div>
+          )}
+
+          {/* (Opcional) FLAG */}
+          {status === "completed" && flag && (
+            <div className="mt-2 rounded-xl border-2 border-amber-900/70 bg-white/10 p-3">
+              <div className="font-bold mb-1">FLAG</div>
+              <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-1.5 text-amber-950 inline-block">
+                {flag}
               </div>
             </div>
           )}

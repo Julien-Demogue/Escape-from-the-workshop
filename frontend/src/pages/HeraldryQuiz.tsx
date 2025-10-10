@@ -100,6 +100,10 @@ export default function HeraldryQuiz() {
   const [codePart, setCodePart] = useState("");
   const [solvedThisSession, setSolvedThisSession] = useState(false);
 
+  // NUEVO: estado local para flag/reward leídos de la BDD
+  const [reward, setReward] = useState<string>("");
+  const [flag, setFlag] = useState<string>("");
+
   const startRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
@@ -134,19 +138,40 @@ export default function HeraldryQuiz() {
     });
   }, []);
 
-  function finishSuccess() {
+  async function finishSuccess() {
     const elapsedMs = Date.now() - startRef.current;
     setRunning(false);
     setElapsed(elapsedMs);
     setSolvedThisSession(true);
     const newScore = computeScore(elapsedMs);
     setScore(newScore);
-    reportGameResult("heraldry-quiz", {
-      status: "completed",
-      score: newScore,
-      codePart: codePartFor("heraldry-quiz"),
-    });
+
+    // === Recuperar FLAG + REWARD reales desde BDD (como en Brissac/Courier) ===
+    try {
+      const ch = await challengeService.getById(HERALDRY_CHALLENGE_ID); // id = 1 en tu BDD
+      const rewardReal = ch.reward || codePartFor("heraldry-quiz");     // fallback por si acaso
+      const flagReal = ch.flag || "";
+
+      setReward(rewardReal);
+      setFlag(flagReal);
+
+      reportGameResult("heraldry-quiz", {
+        status: "completed",
+        score: newScore,
+        codePart: rewardReal, // publicar la clé real
+      });
+    } catch (e) {
+      // Si el fetch falla, usa el reward cacheado para no romper el flujo
+      const fallback = codePartFor("heraldry-quiz");
+      setReward(fallback);
+      reportGameResult("heraldry-quiz", {
+        status: "completed",
+        score: newScore,
+        codePart: fallback,
+      });
+    }
   }
+
   function finishFail() {
     setRunning(false);
     reportGameResult("heraldry-quiz", { status: "failed" });
@@ -247,7 +272,7 @@ export default function HeraldryQuiz() {
           tu devras recommencer depuis le début.
         </p>
 
-        {/* Estado + clave */}
+        {/* Estado + clé */}
         <div className="hq-status">
           <div className="hq-status__row">
             <span className="hq-badge hq-badge--label">Statut</span>
@@ -258,10 +283,11 @@ export default function HeraldryQuiz() {
             <span className="hq-badge">Temps : {formatDuration(elapsed)}</span>
           </div>
 
-          {solvedThisSession && status === "completed" && codePart && (
+          {/* Mostrar la clé siempre que esté completado; preferimos el reward leído de BDD y, si no, el codePart cacheado */}
+          {status === "completed" && (reward || codePart) && (
             <div className="hq-key">
               <div className="hq-key__label">Clé</div>
-              <div className="hq-key__code">{codePart}</div>
+              <div className="hq-key__code">{reward || codePart}</div>
             </div>
           )}
         </div>
