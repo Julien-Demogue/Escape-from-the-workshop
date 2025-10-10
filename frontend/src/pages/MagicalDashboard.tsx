@@ -317,15 +317,6 @@ const MagicalDashboard: React.FC = () => {
         >
           Chat
         </button>
-
-        {/* New button: go to endgame */}
-        <button
-          onClick={() => navigate('/end-game')}
-          className="px-3 py-1 bg-white/90 rounded-md shadow-sm border font-semibold"
-          aria-label="Aller à l'écran de fin"
-        >
-          Fin de partie
-        </button>
       </div>
 
       {/* Pop-up de contexte */}
@@ -395,6 +386,8 @@ const MagicalDashboard: React.FC = () => {
           >
             <div className="flex justify-between items-start">
               <div>
+                {/* Nouveau : indication claire qu'il n'y a pas d'indice, puis titre et texte du lieu */}
+                <h5 className="text-xs text-amber-700 font-semibold mb-2 uppercase">Aucun indice en ces lieux</h5>
                 <h4 className="font-bold text-lg">{infoPopup.title}</h4>
                 <p className="text-sm text-stone-700 mt-2">{infoPopup.text}</p>
               </div>
@@ -435,6 +428,17 @@ const MagicalDashboard: React.FC = () => {
             <span className="text-orange-600 ml-1">⌛</span>
           </div>
         </div>
+      </div>
+      {/* ✅ Bouton finale / Endgame (bottom-left) */}
+      <div className="fixed bottom-6 left-6 z-[60]">
+        <button
+          onClick={() => navigate('/end-game')}
+          className="px-4 py-2 rounded-lg border-2 border-amber-700 bg-gradient-to-r from-amber-200 to-amber-400 text-amber-950 font-semibold shadow-[0_10px_24px_-12px_rgba(0,0,0,.5)] hover:from-amber-100 hover:to-amber-300 active:translate-y-[1px] transition"
+          aria-label="Entrer la solution (finale)"
+          title="Entrer la solution"
+        >
+          ✨ Entrer la solution
+        </button>
       </div>
     </div>
   );
