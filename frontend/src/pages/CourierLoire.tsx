@@ -24,7 +24,7 @@ const BASE: Omit<Place, "img">[] = [
   { id: "langeais",   name: "Langeais",           lat: 47.3250, lon: 0.4020 },
 ];
 
-/** Load local images if present (photos in /castles or blasons in /blason). */
+/** Media local (fotos/blason) */
 function useCastleMedia(): Place[] {
   const photos = import.meta.glob(
     "/src/assets/images/castles/*.{png,jpg,jpeg,webp,svg}",
@@ -36,86 +36,158 @@ function useCastleMedia(): Place[] {
   ) as Record<string, { default: string }>;
 
   const findImg = (id: string): string | undefined => {
-    const photo = Object.entries(photos).find(([p]) => p.toLowerCase().includes(`/${id}.`));
+    const photo = Object.entries(photos).find(([p]) =>
+      p.toLowerCase().includes(`/${id}.`)
+    );
     if (photo) return photo[1].default;
-    const blason = Object.entries(blasons).find(([p]) => p.toLowerCase().includes(id));
+    const blason = Object.entries(blasons).find(([p]) =>
+      p.toLowerCase().includes(id)
+    );
     return blason?.[1].default;
   };
 
   return BASE.map((p) => ({ ...p, img: findImg(p.id) }));
 }
 
-/** ---- Distances ---- */
+/** Distancias */
 function haversine(a: Place, b: Place) {
   const R = 6371;
-  const dLat = (b.lat - a.lat) * Math.PI/180;
-  const dLon = (b.lon - a.lon) * Math.PI/180;
-  const lat1 = a.lat * Math.PI/180;
-  const lat2 = b.lat * Math.PI/180;
-  const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLon = (b.lon - a.lon) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 function totalDistance(seq: Place[]) {
   let sum = 0;
-  for (let i = 0; i < seq.length - 1; i++) sum += haversine(seq[i], seq[i+1]);
+  for (let i = 0; i < seq.length - 1; i++) sum += haversine(seq[i], seq[i + 1]);
   return sum;
 }
 
-/** ---- Mini map SVG ---- */
+/** Mini-mapa con gutter dinámico (no se cortan puntos) */
 function MiniMap({ route }: { route: Place[] }) {
-  const lats = route.map(p => p.lat), lons = route.map(p => p.lon);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const minLon = Math.min(...lons), maxLon = Math.max(...lons);
-  const pad = 16, W = 560, H = 320;
+  // Bounds base
+  const lats = route.map((p) => p.lat),
+    lons = route.map((p) => p.lon);
+  let minLat = Math.min(...lats),
+    maxLat = Math.max(...lats);
+  let minLon = Math.min(...lons),
+    maxLon = Math.max(...lons);
 
+  // Evitar rangos 0
+  if (minLat === maxLat) {
+    minLat -= 0.001;
+    maxLat += 0.001;
+  }
+  if (minLon === maxLon) {
+    minLon -= 0.001;
+    maxLon += 0.001;
+  }
+
+  // Gutter ~6% del rango (mínimo 0.01) para círculos y brillo
+  const latRange = maxLat - minLat;
+  const lonRange = maxLon - minLon;
+  const gLat = Math.max(latRange * 0.06, 0.01);
+  const gLon = Math.max(lonRange * 0.06, 0.01);
+  minLat -= gLat;
+  maxLat += gLat;
+  minLon -= gLon;
+  maxLon += gLon;
+
+  // Canvas + padding interno
+  const W = 640,
+    H = 380;
+  const PAD = 28;
+  const R = 8;
+  const STROKE = 3;
+
+  // Proyección
   const toXY = (p: Place) => {
-    const x = ((p.lon - minLon) / (maxLon - minLon || 1)) * (W - 2*pad) + pad;
-    const y = ((maxLat - p.lat) / (maxLat - minLat || 1)) * (H - 2*pad) + pad; // invert Y
+    const x =
+      ((p.lon - minLon) / (maxLon - minLon)) * (W - 2 * PAD) + PAD;
+    const y =
+      ((maxLat - p.lat) / (maxLat - minLat)) * (H - 2 * PAD) + PAD; // invert Y
     return { x, y };
   };
 
   const pts = route.map(toXY);
-  const d = pts.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join(" ");
+  const pathD = pts.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join(" ");
 
   return (
-    <svg width={W} height={H} style={{ width: "100%", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12 }}>
-      <rect x={0} y={0} width={W} height={H} fill="#f8fafc" />
-      <path d={d} stroke="#2563eb" strokeWidth={3} fill="none" />
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="w-full rounded-xl bg-stone-50 border border-stone-200 shadow-inner"
+    >
+      <defs>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <rect x="0" y="0" width={W} height={H} fill="#f8fafc" />
+
+      {/* Ruta bajo los puntos */}
+      <path
+        d={pathD}
+        stroke="#f59e0b"
+        strokeWidth={4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        filter="url(#glow)"
+      />
+
+      {/* Puntos + numeración */}
       {pts.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r={7} fill="white" stroke="#2563eb" strokeWidth={2} />
-          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fill="#111827">{i + 1}</text>
+          <circle
+            cx={p.x}
+            cy={p.y}
+            r={R}
+            fill="#ffffff"
+            stroke="#f59e0b"
+            strokeWidth={STROKE}
+          />
+          <text
+            x={p.x}
+            y={p.y - (R + 6)}
+            fontSize="11"
+            textAnchor="middle"
+            fill="#111827"
+          >
+            {i + 1}
+          </text>
         </g>
       ))}
     </svg>
   );
 }
 
-/** ---- Scoring 50 / 50 ----
- * Distance (0..50):
- *  - ≤ 166 km -> 50
- *  - 166..200 km -> linear 50..0
- *  - ≥ 200 km -> 0
- *
- * Time (0..50):
- *  - ≤ 3:00 -> 50
- *  - 3..8 min -> linear 50..0
- *  - ≥ 8:00 -> 0
- */
+/** Scoring */
 function distanceScoreKm(distanceKm: number): number {
-  const best = 166; // near-optimal
-  const worst = 200;
+  const best = 166,
+    worst = 200;
   if (distanceKm <= best) return 50;
   if (distanceKm >= worst) return 0;
-  const t = (distanceKm - best) / (worst - best); // 0..1
+  const t = (distanceKm - best) / (worst - best);
   return Math.round(50 * (1 - t));
 }
 function timeScoreMs(elapsedMs: number): number {
-  const best = 3 * 60 * 1000;
-  const worst = 8 * 60 * 1000;
+  const best = 3 * 60 * 1000,
+    worst = 8 * 60 * 1000;
   if (elapsedMs <= best) return 50;
   if (elapsedMs >= worst) return 0;
-  const t = (elapsedMs - best) / (worst - best); // 0..1
+  const t = (elapsedMs - best) / (worst - best);
   return Math.round(50 * (1 - t));
 }
 function computeCourierScore(distanceKm: number, elapsedMs: number) {
@@ -126,11 +198,47 @@ function formatDuration(ms: number) {
   const totalSec = Math.floor(ms / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${m.toString().padStart(2, "0")}:${s
+    .toString()
+    .padStart(2, "0")}`;
 }
 
-/** ---- Page ---- */
-const SUCCESS_DISTANCE_CAP = 200; // if > 200 km, we mark as failed
+/** Fondo estrellado suave */
+function Stars() {
+  const stars = Array.from({ length: 48 }).map((_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    size: 2 + Math.random() * 2,
+    delay: Math.random() * 3,
+    dur: 1.8 + Math.random() * 1.6,
+  }));
+  return (
+    <>
+      <style>{`
+        @keyframes twinkle { 0%,100%{opacity:.25;transform:scale(1)} 50%{opacity:.9;transform:scale(1.2)} }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0">
+        {stars.map((s) => (
+          <div
+            key={s.id}
+            className="absolute rounded-full bg-amber-200"
+            style={{
+              left: `${s.left}%`,
+              top: `${s.top}%`,
+              width: s.size,
+              height: s.size,
+              animation: `twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+              boxShadow: "0 0 10px rgba(251,191,36,.35)",
+            }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+const SUCCESS_DISTANCE_CAP = 200;
 
 export default function CourierLoire() {
   const media = useCastleMedia();
@@ -142,20 +250,23 @@ export default function CourierLoire() {
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
 
-  // Persistence (dashboard) + session gate for the key
-  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
+  // Persistencia + clave
+  const [status, setStatus] = useState<
+    "unvisited" | "completed" | "failed" | "in_progress"
+  >("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
 
-  // Ticking
   useEffect(() => {
     if (!running) return;
-    const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 500);
+    const id = window.setInterval(
+      () => setElapsed(Date.now() - startRef.current),
+      500
+    );
     return () => window.clearInterval(id);
   }, [running]);
 
-  // Load saved + subscribe
   useEffect(() => {
     const saved = readGameResults();
     setStatus(saved["courrier-loire"].status);
@@ -169,7 +280,7 @@ export default function CourierLoire() {
     });
   }, []);
 
-  // Native DnD
+  /** DnD */
   function onDragStart(e: React.DragEvent<HTMLDivElement>, dragIndex: number) {
     e.dataTransfer.setData("text/plain", String(dragIndex));
     e.dataTransfer.effectAllowed = "move";
@@ -188,38 +299,40 @@ export default function CourierLoire() {
       next.splice(overIndex, 0, moved);
       return next;
     });
-    // If they change the route after validating, hide the key until they re-validate
     setSolvedThisSession(false);
     setRunning(true);
-    // Set game state to in_progress when user starts interacting
     if (status === "unvisited") {
       setStatus("in_progress");
       reportGameResult("courrier-loire", { status: "in_progress" });
     }
   }
 
-  // Heuristic helpers
+  /** Heurística */
   function nearestNeighbor() {
     const [start, ...rest] = route;
     const ordered = [start];
     const pool = rest.slice();
     while (pool.length) {
       const last = ordered[ordered.length - 1];
-      let kBest = 0, dBest = Infinity;
+      let kBest = 0,
+        dBest = Infinity;
       for (let k = 0; k < pool.length; k++) {
         const d = haversine(last, pool[k]);
-        if (d < dBest) { dBest = d; kBest = k; }
+        if (d < dBest) {
+          dBest = d;
+          kBest = k;
+        }
       }
       ordered.push(pool.splice(kBest, 1)[0]);
     }
     setRoute(ordered);
     setSolvedThisSession(false);
-    // Update status to in_progress when using the optimization feature
     if (status === "unvisited") {
       setStatus("in_progress");
       reportGameResult("courrier-loire", { status: "in_progress" });
     }
   }
+
   function resetAll() {
     setRoute(media.slice());
     startRef.current = Date.now();
@@ -228,12 +341,9 @@ export default function CourierLoire() {
     setSolvedThisSession(false);
   }
 
-  // Validate and score
   function validateRoute() {
     const elapsedMs = Date.now() - startRef.current;
     const finalScore = computeCourierScore(dist, elapsedMs);
-
-    // Stop timer
     setRunning(false);
     setElapsed(elapsedMs);
 
@@ -243,187 +353,168 @@ export default function CourierLoire() {
       reportGameResult("courrier-loire", {
         status: "completed",
         score: finalScore,
-        codePart: codePartFor("courrier-loire"), // <-- la clave de ESTE juego
+        codePart: codePartFor("courrier-loire"),
       });
     } else {
       setSolvedThisSession(false);
       reportGameResult("courrier-loire", { status: "failed" });
-      alert("Distance trop élevée (> 200 km). Essaie d'améliorer l'itinéraire !");
+      alert(
+        "Distance trop élevée (> 200 km). Essaie d'améliorer l'itinéraire !"
+      );
     }
   }
 
   return (
-    <div style={styles.shell}>
-      <ThickBorderCloseButton />
-      {/* LEFT: info + map */}
-      <div style={styles.leftCol}>
-        <div style={styles.panel}>
-          <h1 style={{ margin: 0 }}>Courrier de la Loire</h1>
-          <p style={{ margin: "6px 0 8px" }}>
-            <strong>Objectif :</strong> fais glisser les cartes des châteaux (à droite) pour construire
-            <strong> l’itinéraire le plus court</strong>. Utilise <em>Améliorer</em> pour une piste.
-          </p>
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-50">
+      <Stars />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0)_0%,rgba(0,0,0,.28)_70%)]" />
 
-          <div style={{ marginBottom: 8 }}>
-            Distance totale :{" "}
-            <strong style={{ color: dist <= 166 ? "#16a34a" : "#111827" }}>
-              {dist.toFixed(1)} km
-            </strong>
-            <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Barème distance (0–50 pts) : ≤ 166 km = 50 pts, 166–200 km = dégressif, ≥ 200 km = 0.
+      {/* Close */}
+      <div className="absolute left-4 top-4 z-20">
+        <ThickBorderCloseButton />
+      </div>
+
+      {/* Title */}
+      <header className="relative z-10 mx-auto max-w-6xl px-4 pt-10 pb-4 text-center">
+        <h1 className="font-serif text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_2px_12px_rgba(251,191,36,.35)]">
+          Courrier de la Loire
+        </h1>
+        <p className="mt-2 text-amber-100/90">
+          Réorganise les châteaux pour tracer{" "}
+          <span className="font-semibold">l’itinéraire le plus court</span>.
+        </p>
+      </header>
+
+      {/* MAIN — dos columnas claras y ordenadas */}
+      <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-16 lg:grid-cols-[1.25fr_1fr]">
+        {/* LEFT: mapa + métricas + acciones + estado */}
+        <section className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-5 md:p-6 shadow-xl">
+          {/* Mapa */}
+          <div className="rounded-xl border border-amber-200/40 bg-amber-50/10 p-3 shadow-inner">
+            <MiniMap route={route} />
+          </div>
+
+          {/* Métricas */}
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-3 text-center">
+              <div className="text-xs text-amber-100/80">Distance</div>
+              <div className="text-xl font-extrabold text-amber-200">
+                {dist.toFixed(1)} km
+              </div>
             </div>
-            <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Barème temps (0–50 pts) : ≤ 3:00 = 50 pts, 3–8 min dégressif, ≥ 8:00 = 0.
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-3 text-center">
+              <div className="text-xs text-amber-100/80">Temps</div>
+              <div className="text-xl font-extrabold text-amber-200">
+                {formatDuration(elapsed)}
+              </div>
             </div>
-            <div style={{ color: "#6b7280", fontSize: 12 }}>
-              Valide en dessous de 200 km pour terminer le jeu.
+            <div className="rounded-lg border border-amber-200/40 bg-white/10 p-3 text-center">
+              <div className="text-xs text-amber-100/80">Score</div>
+              <div className="text-xl font-extrabold text-amber-200">
+                {score}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={nearestNeighbor} style={styles.btnPrimary}>
-              Améliorer (plus proche voisin)
+          {/* Acciones */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              onClick={nearestNeighbor}
+              className="rounded-lg border-2 border-amber-900 bg-gradient-to-r from-amber-300 to-amber-500 px-4 py-2 font-semibold text-amber-950 shadow-[0_10px_24px_-12px_rgba(0,0,0,.5)] hover:from-amber-200 hover:to-amber-400 active:translate-y-[1px] transition"
+            >
+              Améliorer (voisin le plus proche)
             </button>
-            <button onClick={resetAll} style={styles.btnGhost}>
+            <button
+              onClick={resetAll}
+              className="rounded-lg border-2 border-amber-900 bg-white/80 px-4 py-2 font-semibold text-amber-950 hover:bg-white transition"
+            >
               Réinitialiser
             </button>
-            <button onClick={validateRoute} style={styles.btnValidate}>
+            <button
+              onClick={validateRoute}
+              className="rounded-lg border-2 border-emerald-900 bg-gradient-to-r from-emerald-300 to-emerald-500 px-4 py-2 font-semibold text-emerald-950 shadow-[0_10px_24px_-12px_rgba(0,0,0,.5)] hover:from-emerald-200 hover:to-emerald-400 active:translate-y-[1px] transition"
+            >
               Valider l’itinéraire
             </button>
           </div>
 
-          {/* Status + Score + Time + Key */}
-          <div style={styles.statusBox}>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontWeight: 700 }}>Statut du jeu</span>
-              <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
-                {status === "completed" ? "Terminé" : status === "failed" ? "Échoué" : "Non visité"}
-              </span>
-              <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
-                Score&nbsp;: {score}
-              </span>
-              <span style={{ padding: "2px 8px", border: "2px solid black", borderRadius: 8 }}>
-                Temps&nbsp;: {formatDuration(elapsed)}
+          {/* Estado + clave */}
+          <div className="mt-4 rounded-xl border-2 border-amber-900/70 bg-white/10 p-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-bold">Statut</span>
+              <span className="rounded-md border-2 border-amber-900 bg-amber-50/90 px-2 py-0.5 text-amber-950">
+                {status === "completed"
+                  ? "Terminé"
+                  : status === "failed"
+                  ? "Échoué"
+                  : status === "in_progress"
+                  ? "En cours"
+                  : "Non visité"}
               </span>
             </div>
 
-            {/* 🔑 Clé: SOLO si se completó AHORA en esta sesión */}
             {solvedThisSession && status === "completed" && codePart && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>Clé</div>
-                <div style={{ padding: "8px 10px", border: "2px dashed black", borderRadius: 8 }}>
-                  {codePart /* ce jeu apporte le mot défini par codePartFor("courrier-loire") */}
+              <div className="mt-3">
+                <div className="font-bold mb-1">Clé</div>
+                <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-2 text-amber-950">
+                  {codePart}
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div style={styles.mapPanel}>
-          <MiniMap route={route} />
-        </div>
-      </div>
+        {/* RIGHT: lista de escudos (draggable) */}
+        <section className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-5 md:p-6 shadow-xl">
+          <h2 className="mb-3 font-serif text-xl text-amber-100">
+            Ordre (glisser pour réorganiser)
+          </h2>
 
-      {/* RIGHT: reorder list */}
-      <div style={styles.rightCol}>
-        <h2 style={{ margin: "0 0 8px 0", fontSize: 18 }}>Ordre (glisser pour réorganiser)</h2>
-        <div style={styles.list}>
-          {route.map((p, i) => (
-            <div
-              key={p.id}
-              draggable
-              onDragStart={(e) => onDragStart(e, i)}
-              onDragOver={onDragOver}
-              onDrop={(e) => onDrop(e, i)}
-              style={styles.card}
-              aria-label={`Glisser ${p.name}`}
-              title="Glisser pour réorganiser"
-            >
-              <div style={styles.posBadge}>{i + 1}</div>
-              <div style={styles.thumb}>
-                {p.img ? (
-                  <img src={p.img} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span style={{ fontWeight: 700, color: "#374151" }}>{p.name[0]}</span>
-                )}
-              </div>
-              <div>
-                <div style={{ fontWeight: 800 }}>{p.name}</div>
-                <div style={{ color: "#6b7280", fontSize: 12 }}>Fais glisser vers le haut/bas pour changer l’itinéraire.</div>
-              </div>
+          <div className="max-h-[560px] overflow-auto pr-1">
+            <div className="grid gap-2">
+              {route.map((p, i) => (
+                <div
+                  key={p.id}
+                  draggable
+                  onDragStart={(e) => onDragStart(e, i)}
+                  onDragOver={onDragOver}
+                  onDrop={(e) => onDrop(e, i)}
+                  className="grid grid-cols-[42px_56px_1fr] items-center gap-3 rounded-xl border border-amber-200/50 bg-white/90 p-2 text-stone-900 shadow hover:shadow-lg cursor-grab active:cursor-grabbing transition"
+                  title="Glisser pour réorganiser"
+                >
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 font-extrabold text-amber-800">
+                    {i + 1}
+                  </div>
+                  <div className="h-14 w-14 overflow-hidden rounded-lg bg-stone-200 grid place-items-center">
+                    {p.img ? (
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-extrabold text-stone-600">
+                        {p.name[0]}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-bold">{p.name}</div>
+                    <div className="text-xs text-stone-600">
+                      Glisse pour ajuster l’itinéraire.
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p style={{ color: "#6b7280", marginTop: 10 }}>
-          Astuce : après “Améliorer”, continue à ajuster à la main pour optimiser.
-        </p>
-      </div>
+          </div>
+
+          <p className="mt-3 text-sm text-amber-100/80">
+            Astuce : après “Améliorer”, ajuste encore à la main pour gagner des
+            kilomètres.
+          </p>
+        </section>
+      </main>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  shell: {
-    padding: 16,
-    maxWidth: 1200,
-    margin: "0 auto",
-    display: "grid",
-    gridTemplateColumns: "1.2fr 1fr",
-    gap: 16,
-    alignItems: "start",
-  },
-  leftCol: { display: "grid", gridTemplateRows: "auto 1fr", gap: 16 },
-  panel: {
-    background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12,
-  },
-  mapPanel: {
-    background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12,
-    display: "grid", placeItems: "center",
-  },
-  rightCol: {
-    background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 12,
-  },
-  list: { display: "grid", gap: 10 },
-  card: {
-    display: "grid",
-    gridTemplateColumns: "36px 56px 1fr",
-    gap: 10,
-    alignItems: "center",
-    background: "white",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    padding: 10,
-    boxShadow: "0 1px 0 #e5e7eb",
-    cursor: "grab",
-    userSelect: "none",
-  },
-  posBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3730a3",
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 800,
-  },
-  thumb: {
-    width: 56, height: 56, borderRadius: 8, overflow: "hidden",
-    background: "#e5e7eb", display: "grid", placeItems: "center",
-  },
-  btnPrimary: {
-    padding: "8px 12px", borderRadius: 10, border: "1px solid #1d4ed8",
-    background: "#2563eb", color: "white", cursor: "pointer", fontWeight: 600,
-  },
-  btnGhost: {
-    padding: "8px 12px", borderRadius: 10, border: "1px solid #e5e7eb",
-    background: "white", cursor: "pointer", fontWeight: 600,
-  },
-  btnValidate: {
-    padding: "8px 12px", borderRadius: 10, border: "1px solid #065f46",
-    background: "#10b981", color: "white", cursor: "pointer", fontWeight: 700,
-  },
-  statusBox: {
-    marginTop: 12, padding: 12, borderRadius: 12, border: "4px solid black", background: "white",
-  },
-};

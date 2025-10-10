@@ -47,7 +47,7 @@ const App: React.FC = () => (
     <Route path="/brissac-enigma" element={<MagicalBrissacEnigma />} />
     <Route path="/original-brissac-enigma" element={<BrissacEnigma />} />
     <Route path="/memory-loire" element={<MemoryLoire />} />
-    <Route path="/courier-loire" element={<CourierLoire />} />
+    <Route path="/courrier-loire" element={<CourierLoire />} />
     <Route path="/groupadmin/:id" element={<GroupAdmin />} />
     <Route path="/groupadmin" element={<GroupAdmin />} />
     <Route path="/group/:id" element={<Group />} />
