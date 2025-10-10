@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from "react";
@@ -6,12 +7,15 @@ import partyService from "../services/partyService";
 import groupService from "../services/groupService";
 import userService from "../services/userService"; // <-- ajout
 import ThickBorderCard from "../components/ui/ThickBorderCard";
+import GameStateService from "../services/gameState.service";
 import ThickBorderButton from "../components/ui/ThickBorderButton";
 import ThickBorderCheckbox from "../components/ui/ThickBorderCheckbox";
 import ThickBorderCircle from "../components/ui/ThickBorderCircle";
 import ThickBorderError from "../components/ui/ThickBorderError";
 import ThickBorderInput from "../components/ui/ThickBorderInput";
 import useToast from "../hooks/useToast";
+// known games to reset when joining/creating a new party
+const KNOWN_GAME_KEYS = ['heraldry-quiz', 'puzzle', 'memory-loire', 'courrier-loire', 'brissac-enigma', 'chambord-enigma'];
 
 interface Participant {
   id: number;
@@ -89,6 +93,15 @@ const GroupAdmin: React.FC = () => {
         setErrorMessage("Impossible de récupérer le code de la partie.");
       } finally {
         setLoadingParty(false);
+        // si nouvelle party, reset persistances et états de jeu
+        const prev = localStorage.getItem("partyId");
+        if (prev !== String(partyId)) {
+          try { localStorage.removeItem("gameResults"); } catch { }
+          try { localStorage.removeItem("extraCompleted"); } catch { }
+          KNOWN_GAME_KEYS.forEach(k => {
+            try { GameStateService.setState(k, 'unvisited'); } catch { }
+          });
+        }
         localStorage.setItem("partyId", partyId.toString());
       }
     };
