@@ -63,7 +63,7 @@ const Messages: React.FC = () => {
       return;
     }
 
-    const newSocket = io(import.meta.env.IP_BACK, {
+    const newSocket = io(import.meta.env.VITE_IP_BACK, {
       auth: {
         token: token // ✅ Envoyer le token dans l'authentification
       },
