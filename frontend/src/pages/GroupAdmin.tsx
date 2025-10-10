@@ -134,6 +134,16 @@ const GroupAdmin: React.FC = () => {
       setConnectedUsers(prev => [...new Set([...prev, data.userId])]);
     });
 
+    newSocket.on('party-started', (data: {
+      partyId: number,
+    }) => {
+      if (data.partyId.toString() == localStorage.getItem("partyId")) {
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1000);
+      }
+    });
+
     // Cleanup à la déconnexion
     return () => {
       newSocket.emit('leave-party-room', id);
@@ -465,7 +475,16 @@ const GroupAdmin: React.FC = () => {
       const endDateTimestamp = endDate.getTime();
       await partyService.startParty(partyId, endDateTimestamp);
       // rediriger vers le dashboard après démarrage
-      navigate("/dashboard");
+
+      if (socket) {
+        socket.emit('party-started', {
+          partyId: partyId
+        });
+        console.log('📤 Événement party-started émis pour la party:', partyId);
+      }
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
     } catch (err) {
       console.error("Erreur lors du démarrage de la partie :", err);
       setErrorMessage("Impossible de démarrer la quête. Réessayez.");
