@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ContextPopup from "../components/ui/ContextPopup";
@@ -7,6 +8,7 @@ import GameStateService, { type GameStates } from "../services/gameState.service
 import { readGameResults, reportGameResult } from "../state/gameResults";
 import carteLoire from "../assets/Carte_Loire.png";
 import partyService from "../services/partyService";
+import groupService from "../services/groupService"; // <-- ajouté
 
 const INITIAL_GAMES_STATE: GameStates = {
   'heraldry-quiz': 'unvisited',
@@ -138,6 +140,36 @@ const MagicalDashboard: React.FC = () => {
               // If timestamp looks like seconds (reasonable cutoff), convert to ms
               if (ts < 1e12) ts = ts * 1000;
               setEndTimestamp(ts);
+            }
+          }
+        }
+
+        // --- SYNC: si on a un groupId local, récupérer les challenges déjà complétés et appliquer
+        const storedGroup = localStorage.getItem("groupId");
+        if (storedGroup) {
+          const gid = parseInt(storedGroup, 10);
+          if (!Number.isNaN(gid)) {
+            try {
+              const completed = await groupService.getCompletedChallenges(gid);
+              if (Array.isArray(completed) && completed.length > 0) {
+                completed.forEach((gameKey) => {
+                  // Ne toucher qu'aux clés connues du dashboard
+                  if (Object.prototype.hasOwnProperty.call(INITIAL_GAMES_STATE, gameKey)) {
+                    GameStateService.setState(String(gameKey), 'completed');
+                    // Mettre à jour aussi le stockage partagé / résultat
+                    try {
+                      // type cast minimal pour s'adapter au typage existant
+                      reportGameResult(gameKey as any, { status: 'completed' });
+                    } catch {
+                      // ignore si report échoue
+                    }
+                  }
+                });
+                // Forcer la mise à jour locale à partir du service centralisé
+                setGamesState(GameStateService.getStates());
+              }
+            } catch (err) {
+              console.warn("Impossible de récupérer les challenges complétés du groupe :", err);
             }
           }
         }

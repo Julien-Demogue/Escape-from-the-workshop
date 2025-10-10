@@ -27,18 +27,6 @@ export class GroupService {
             },
         });
 
-        // Initialise challenge progress
-        const challenges = await this.prisma.challenge.findMany();
-        for (const challenge of challenges) {
-            await this.prisma.challengeProgress.create({
-                data: {
-                    challengeId: challenge.id,
-                    groupId: newGroup.id,
-                    isCompleted: false,
-                },
-            });
-        }
-
         return newGroup;
     }
 
@@ -70,6 +58,14 @@ export class GroupService {
             where: { groupId, challengeId },
             data: { isCompleted: true },
         });
+    }
+
+    async getCompletedChallengeIds(groupId: number): Promise<number[]> {
+        const rows = await this.prisma.challengeProgress.findMany({
+            where: { groupId, isCompleted: true },
+            select: { challengeId: true },
+        });
+        return rows.map(r => r.challengeId);
     }
 
     async deleteGroup(groupId: number): Promise<Group> {
