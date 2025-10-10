@@ -1,3 +1,4 @@
+// src/pages/CourierLoire.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ThickBorderCloseButton from "../components/ui/ThickBorderCloseButton";
 import {
@@ -6,6 +7,10 @@ import {
   readGameResults,
   onGameResultsChange,
 } from "../state/gameResults";
+
+// === INFO (BDD) ===
+import challengeService from "../services/challengeService";
+import type { Info } from "../services/infoService";
 
 /** ---- Data ---- */
 type Place = { id: string; name: string; lat: number; lon: number; img?: string };
@@ -67,9 +72,8 @@ function totalDistance(seq: Place[]) {
   return sum;
 }
 
-/** Mini-mapa con gutter dinámico (no se cortan puntos) */
+/** Mini-mapa con gutter dinámico */
 function MiniMap({ route }: { route: Place[] }) {
-  // Bounds base
   const lats = route.map((p) => p.lat),
     lons = route.map((p) => p.lon);
   let minLat = Math.min(...lats),
@@ -77,39 +81,22 @@ function MiniMap({ route }: { route: Place[] }) {
   let minLon = Math.min(...lons),
     maxLon = Math.max(...lons);
 
-  // Evitar rangos 0
-  if (minLat === maxLat) {
-    minLat -= 0.001;
-    maxLat += 0.001;
-  }
-  if (minLon === maxLon) {
-    minLon -= 0.001;
-    maxLon += 0.001;
-  }
+  if (minLat === maxLat) { minLat -= 0.001; maxLat += 0.001; }
+  if (minLon === maxLon) { minLon -= 0.001; maxLon += 0.001; }
 
-  // Gutter ~6% del rango (mínimo 0.01) para círculos y brillo
   const latRange = maxLat - minLat;
   const lonRange = maxLon - minLon;
   const gLat = Math.max(latRange * 0.06, 0.01);
   const gLon = Math.max(lonRange * 0.06, 0.01);
-  minLat -= gLat;
-  maxLat += gLat;
-  minLon -= gLon;
-  maxLon += gLon;
+  minLat -= gLat; maxLat += gLat;
+  minLon -= gLon; maxLon += gLon;
 
-  // Canvas + padding interno
-  const W = 640,
-    H = 380;
-  const PAD = 28;
-  const R = 8;
-  const STROKE = 3;
+  const W = 640, H = 380;
+  const PAD = 28; const R = 8; const STROKE = 3;
 
-  // Proyección
   const toXY = (p: Place) => {
-    const x =
-      ((p.lon - minLon) / (maxLon - minLon)) * (W - 2 * PAD) + PAD;
-    const y =
-      ((maxLat - p.lat) / (maxLat - minLat)) * (H - 2 * PAD) + PAD; // invert Y
+    const x = ((p.lon - minLon) / (maxLon - minLon)) * (W - 2 * PAD) + PAD;
+    const y = ((maxLat - p.lat) / (maxLat - minLat)) * (H - 2 * PAD) + PAD;
     return { x, y };
   };
 
@@ -135,8 +122,6 @@ function MiniMap({ route }: { route: Place[] }) {
       </defs>
 
       <rect x="0" y="0" width={W} height={H} fill="#f8fafc" />
-
-      {/* Ruta bajo los puntos */}
       <path
         d={pathD}
         stroke="#f59e0b"
@@ -146,25 +131,10 @@ function MiniMap({ route }: { route: Place[] }) {
         fill="none"
         filter="url(#glow)"
       />
-
-      {/* Puntos + numeración */}
       {pts.map((p, i) => (
         <g key={i}>
-          <circle
-            cx={p.x}
-            cy={p.y}
-            r={R}
-            fill="#ffffff"
-            stroke="#f59e0b"
-            strokeWidth={STROKE}
-          />
-          <text
-            x={p.x}
-            y={p.y - (R + 6)}
-            fontSize="11"
-            textAnchor="middle"
-            fill="#111827"
-          >
+          <circle cx={p.x} cy={p.y} r={R} fill="#ffffff" stroke="#f59e0b" strokeWidth={STROKE} />
+          <text x={p.x} y={p.y - (R + 6)} fontSize="11" textAnchor="middle" fill="#111827">
             {i + 1}
           </text>
         </g>
@@ -175,16 +145,14 @@ function MiniMap({ route }: { route: Place[] }) {
 
 /** Scoring */
 function distanceScoreKm(distanceKm: number): number {
-  const best = 166,
-    worst = 200;
+  const best = 166, worst = 200;
   if (distanceKm <= best) return 50;
   if (distanceKm >= worst) return 0;
   const t = (distanceKm - best) / (worst - best);
   return Math.round(50 * (1 - t));
 }
 function timeScoreMs(elapsedMs: number): number {
-  const best = 3 * 60 * 1000,
-    worst = 8 * 60 * 1000;
+  const best = 3 * 60 * 1000, worst = 8 * 60 * 1000;
   if (elapsedMs <= best) return 50;
   if (elapsedMs >= worst) return 0;
   const t = (elapsedMs - best) / (worst - best);
@@ -198,9 +166,7 @@ function formatDuration(ms: number) {
   const totalSec = Math.floor(ms / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
-  return `${m.toString().padStart(2, "0")}:${s
-    .toString()
-    .padStart(2, "0")}`;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 /** Fondo estrellado suave */
@@ -239,8 +205,35 @@ function Stars() {
 }
 
 const SUCCESS_DISTANCE_CAP = 200;
+const COURIER_CHALLENGE_ID = 6;
 
 export default function CourierLoire() {
+  // === INFO (BDD) ===
+  const [info, setInfo] = useState<Info | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
+  const [infoError, setInfoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingInfo(true);
+    challengeService
+      .getInfo(COURIER_CHALLENGE_ID)
+      .then((data) => {
+        if (!cancelled) {
+          setInfo(data);
+          // eslint-disable-next-line no-console
+          console.log("[CourierLoire] info from API:", data);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setInfoError(e?.response?.data?.error ?? e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInfo(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const media = useCastleMedia();
   const [route, setRoute] = useState<Place[]>(() => media.slice());
   const dist = useMemo(() => totalDistance(route), [route]);
@@ -249,23 +242,17 @@ export default function CourierLoire() {
   const startRef = useRef<number>(Date.now());
   const [elapsed, setElapsed] = useState<number>(0);
   const [running, setRunning] = useState<boolean>(true);
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setElapsed(Date.now() - startRef.current), 500);
+    return () => window.clearInterval(id);
+  }, [running]);
 
   // Persistencia + clave
-  const [status, setStatus] = useState<
-    "unvisited" | "completed" | "failed" | "in_progress"
-  >("unvisited");
+  const [status, setStatus] = useState<"unvisited" | "completed" | "failed" | "in_progress">("unvisited");
   const [score, setScore] = useState<number>(0);
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(
-      () => setElapsed(Date.now() - startRef.current),
-      500
-    );
-    return () => window.clearInterval(id);
-  }, [running]);
 
   useEffect(() => {
     const saved = readGameResults();
@@ -314,14 +301,10 @@ export default function CourierLoire() {
     const pool = rest.slice();
     while (pool.length) {
       const last = ordered[ordered.length - 1];
-      let kBest = 0,
-        dBest = Infinity;
+      let kBest = 0, dBest = Infinity;
       for (let k = 0; k < pool.length; k++) {
         const d = haversine(last, pool[k]);
-        if (d < dBest) {
-          dBest = d;
-          kBest = k;
-        }
+        if (d < dBest) { dBest = d; kBest = k; }
       }
       ordered.push(pool.splice(kBest, 1)[0]);
     }
@@ -358,9 +341,7 @@ export default function CourierLoire() {
     } else {
       setSolvedThisSession(false);
       reportGameResult("courrier-loire", { status: "failed" });
-      alert(
-        "Distance trop élevée (> 200 km). Essaie d'améliorer l'itinéraire !"
-      );
+      alert("Distance trop élevée (> 200 km). Essaie d'améliorer l'itinéraire !");
     }
   }
 
@@ -374,27 +355,49 @@ export default function CourierLoire() {
         <ThickBorderCloseButton />
       </div>
 
-      {/* Title */}
+      {/* Title (from DB) */}
       <header className="relative z-10 mx-auto max-w-6xl px-4 pt-10 pb-4 text-center">
-        <h1 className="font-serif text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_2px_12px_rgba(251,191,36,.35)]">
-          Courrier de la Loire
-        </h1>
-        <p className="mt-2 text-amber-100/90">
-          Réorganise les châteaux pour tracer{" "}
-          <span className="font-semibold">l’itinéraire le plus court</span>.
-        </p>
+        {loadingInfo && (
+          <p className="text-amber-100/90">Chargement de la description…</p>
+        )}
+        {infoError && (
+          <p className="text-red-200">Erreur : {infoError}</p>
+        )}
+        {info ? (
+          <>
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_2px_12px_rgba(251,191,36,.35)]">
+              {info.title}
+            </h1>
+            {info.description && (
+              <p className="mt-2 text-amber-100/90 whitespace-pre-line">
+                {info.description}
+              </p>
+            )}
+          </>
+        ) : (
+          !loadingInfo &&
+          !infoError && (
+            <>
+              <h1 className="font-serif text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_2px_12px_rgba(251,191,36,.35)]">
+                Courrier de la Loire
+              </h1>
+              <p className="mt-2 text-amber-100/90">
+                Réorganise les châteaux pour tracer{" "}
+                <span className="font-semibold">l’itinéraire le plus court</span>.
+              </p>
+            </>
+          )
+        )}
       </header>
 
-      {/* MAIN — dos columnas claras y ordenadas */}
+      {/* MAIN — dos columnas */}
       <main className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-16 lg:grid-cols-[1.25fr_1fr]">
-        {/* LEFT: mapa + métricas + acciones + estado */}
+        {/* LEFT */}
         <section className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-5 md:p-6 shadow-xl">
-          {/* Mapa */}
           <div className="rounded-xl border border-amber-200/40 bg-amber-50/10 p-3 shadow-inner">
             <MiniMap route={route} />
           </div>
 
-          {/* Métricas */}
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="rounded-lg border border-amber-200/40 bg-white/10 p-3 text-center">
               <div className="text-xs text-amber-100/80">Distance</div>
@@ -416,7 +419,6 @@ export default function CourierLoire() {
             </div>
           </div>
 
-          {/* Acciones */}
           <div className="mt-4 flex flex-wrap gap-3">
             <button
               onClick={nearestNeighbor}
@@ -438,7 +440,6 @@ export default function CourierLoire() {
             </button>
           </div>
 
-          {/* Estado + clave */}
           <div className="mt-4 rounded-xl border-2 border-amber-900/70 bg-white/10 p-4">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="font-bold">Statut</span>
@@ -464,7 +465,7 @@ export default function CourierLoire() {
           </div>
         </section>
 
-        {/* RIGHT: lista de escudos (draggable) */}
+        {/* RIGHT */}
         <section className="rounded-2xl border-2 border-amber-900/70 bg-white/10 backdrop-blur-xl p-5 md:p-6 shadow-xl">
           <h2 className="mb-3 font-serif text-xl text-amber-100">
             Ordre (glisser pour réorganiser)
