@@ -207,6 +207,10 @@ function Stars() {
 const SUCCESS_DISTANCE_CAP = 200;
 const COURIER_CHALLENGE_ID = 6;
 
+// LocalStorage keys para persistencia
+const LOCAL_ROUTE_KEY = "courrier-route-v1";
+const START_TS_KEY = "courrier-start-ts-v1";
+
 export default function CourierLoire() {
   // === INFO (BDD) ===
   const [info, setInfo] = useState<Info | null>(null);
@@ -235,12 +239,39 @@ export default function CourierLoire() {
   }, []);
 
   const media = useCastleMedia();
-  const [route, setRoute] = useState<Place[]>(() => media.slice());
+
+  // Ruta persistida
+  const [route, setRoute] = useState<Place[]>(() => {
+    try {
+      const raw = localStorage.getItem(LOCAL_ROUTE_KEY);
+      if (!raw) return media.slice();
+      const ids: string[] = JSON.parse(raw);
+      const byId = new Map(media.map(p => [p.id, p]));
+      const restored = ids.map(id => byId.get(id)).filter(Boolean) as Place[];
+      return restored.length === media.length ? restored : media.slice();
+    } catch {
+      return media.slice();
+    }
+  });
+  // Persistir cada cambio de ruta (guardamos sólo los ids)
+  useEffect(() => {
+    const ids = route.map(p => p.id);
+    localStorage.setItem(LOCAL_ROUTE_KEY, JSON.stringify(ids));
+  }, [route]);
+
   const dist = useMemo(() => totalDistance(route), [route]);
 
-  // Timer
-  const startRef = useRef<number>(Date.now());
-  const [elapsed, setElapsed] = useState<number>(0);
+  // Timer (persistimos el timestamp de inicio)
+  const startRef = useRef<number>((() => {
+    const raw = localStorage.getItem(START_TS_KEY);
+    const ts = raw ? Number(raw) : NaN;
+    const init = Number.isFinite(ts) ? ts : Date.now();
+    if (!Number.isFinite(ts)) {
+      try { localStorage.setItem(START_TS_KEY, String(init)); } catch {}
+    }
+    return init;
+  })()) as React.MutableRefObject<number>;
+  const [elapsed, setElapsed] = useState<number>(Date.now() - startRef.current);
   const [running, setRunning] = useState<boolean>(true);
   useEffect(() => {
     if (!running) return;
@@ -254,7 +285,7 @@ export default function CourierLoire() {
   const [codePart, setCodePart] = useState<string>("");
   const [solvedThisSession, setSolvedThisSession] = useState<boolean>(false);
 
-  // NUEVO: estado local para mostrar lo leído de BDD
+  // Estado local para mostrar lo leído de BDD
   const [reward, setReward] = useState<string>("");
   const [flag, setFlag] = useState<string>("");
 
@@ -322,7 +353,10 @@ export default function CourierLoire() {
 
   function resetAll() {
     setRoute(media.slice());
-    startRef.current = Date.now();
+    try { localStorage.removeItem(LOCAL_ROUTE_KEY); } catch {}
+    const now = Date.now();
+    startRef.current = now;
+    try { localStorage.setItem(START_TS_KEY, String(now)); } catch {}
     setElapsed(0);
     setRunning(true);
     setSolvedThisSession(false);
@@ -339,7 +373,7 @@ export default function CourierLoire() {
       setScore(finalScore);
       setSolvedThisSession(true);
 
-      // === Recuperar FLAG + REWARD reales desde BDD (como en Brissac) ===
+      // === Recuperar FLAG + REWARD reales desde BDD ===
       try {
         const ch = await challengeService.getById(COURIER_CHALLENGE_ID); // id = 6 en tu BDD
         const rewardReal = ch.reward || codePartFor("courrier-loire"); // fallback por si acaso
@@ -351,7 +385,7 @@ export default function CourierLoire() {
         reportGameResult("courrier-loire", {
           status: "completed",
           score: finalScore,
-          codePart: rewardReal, // publier la clé real
+          codePart: rewardReal, // publicar la clé real
         });
       } catch (e) {
         // Si el fetch falla, caemos al reward cacheado para no romper el flujo
@@ -369,6 +403,24 @@ export default function CourierLoire() {
       alert("Distance trop élevée (> 200 km). Essaie d'améliorer l'itinéraire !");
     }
   }
+
+  // Si el usuario reanuda la sesión, aseguremos que el timer esté bien
+  useEffect(() => {
+    // Si estaba completed, no forzamos a correr el reloj
+    if (status === "completed") {
+      setRunning(false);
+      return;
+    }
+    // Si no, nos aseguramos de tener un start guardado
+    const raw = localStorage.getItem(START_TS_KEY);
+    if (!raw) {
+      const now = Date.now();
+      startRef.current = now;
+      try { localStorage.setItem(START_TS_KEY, String(now)); } catch {}
+      setElapsed(0);
+      setRunning(true);
+    }
+  }, [status]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-stone-900 via-amber-900 to-stone-800 text-amber-50">
@@ -485,6 +537,16 @@ export default function CourierLoire() {
                 <div className="font-bold mb-1">Clé</div>
                 <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-2 text-amber-950">
                   {reward || codePart}
+                </div>
+              </div>
+            )}
+
+            {/* (Opcional) FLAG */}
+            {status === "completed" && flag && (
+              <div className="mt-2">
+                <div className="font-bold mb-1">FLAG</div>
+                <div className="rounded-lg border-2 border-dashed border-amber-900 bg-amber-50/90 px-3 py-2 text-amber-950">
+                  {flag}
                 </div>
               </div>
             )}
