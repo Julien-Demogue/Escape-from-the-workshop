@@ -322,4 +322,39 @@ router.post('/:groupId/complete-challenge', (req, res) => groupController.comple
  */
 router.delete('/:groupId', (req, res) => groupController.deleteGroup(req, res));
 
+/**
+ * @openapi
+ * /groups/{groupId}/completed-challenges:
+ *   get:
+ *     summary: Get completed challenges IDs for a group
+ *     tags:
+ *       - groups
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of completed challenge IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: integer
+ *       400:
+ *         description: Invalid group id
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Group not found
+ *       500:
+ *         description: Internal Server Error
+ */
+router.get('/:groupId/completed-challenges', (req, res) => groupController.getCompletedChallenges(req, res));
+
 export default router;
